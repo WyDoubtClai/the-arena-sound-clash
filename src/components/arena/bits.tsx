@@ -48,7 +48,7 @@ export function Waveform({ seed, progress = 0, bars = 48, className, onSeek }: {
       aria-hidden
     >
       {h.map((v, i) => (
-        <span key={i} className={cn("flex-1 rounded-full transition-colors", i / bars < progress ? "bg-violet" : "bg-muted-foreground/30")} style={{ height: `${v * 100}%` }} />
+        <span key={i} className={cn("flex-1 rounded-full transition-colors", i / bars < progress ? "bg-violet" : "bg-muted-foreground/30")} style={{ height: `${Math.round(v * 1000) / 10}%` }} />
       ))}
     </div>
   );
