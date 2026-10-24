@@ -9,6 +9,7 @@ import { achievementList, canEditProfile, canFeatureAchievement, competitive, cr
 import { Avatar, Panel, Pills, PlayButton, RoleBadge, Waveform } from "@/components/arena/bits";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { BeatVault } from "@/components/arena/beat-vault";
 import banner from "@/assets/studio-banner.jpg";
 
 export const Route = createFileRoute("/profile")({
@@ -22,7 +23,7 @@ export const Route = createFileRoute("/profile")({
   component: Profile,
 });
 
-const tabs = ["Music", "Battles", "Achievements"] as const;
+const tabs = ["Music", "Battles", "Achievements", "Beat Vault"] as const;
 const icons = { trophy: Trophy, flame: Flame, crown: Crown, disc: Disc3, heart: Heart };
 const listingStyle = {
   "Competition Only": "border-violet/50 bg-violet/15 text-violet",
@@ -76,6 +77,7 @@ function Profile() {
   useEffect(() => {
     const target = new URLSearchParams(window.location.search).get("profile");
     if (profileIds.some((profile) => profile === target)) setId(target as ProfileId);
+    if (new URLSearchParams(window.location.search).get("tab") === "vault") setTab("Beat Vault");
   }, []);
 
   async function share() {
@@ -166,6 +168,7 @@ function Profile() {
           </article>)}</div>
         </section>}
 
+        {tab === "Beat Vault" && <BeatVault profileId={id} />}
         {tab === "Achievements" && <section aria-label="Achievements">
           <div className="mb-3"><h2 className="font-display text-lg font-semibold">Trophy room</h2><p className="text-xs text-muted-foreground">Fictional achievements · Showcase changes last for this session only</p></div>
           <div className="grid gap-3 sm:grid-cols-2">{achievementList.map((a) => {
