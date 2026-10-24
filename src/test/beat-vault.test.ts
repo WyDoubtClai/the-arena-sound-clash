@@ -42,11 +42,11 @@ describe("beat vault rewards", () => {
   });
   it("60s excerpt equals the matching PCM samples of the full WAV after the 44-byte header", () => {
     const full = renderWav(beat.seed, seconds(beat.duration));
-    expect(new Uint8Array(renderWav(beat.seed, seconds(beat.duration)))).toEqual(new Uint8Array(full)); // deterministic regeneration
+    expect(Buffer.from(renderWav(beat.seed, seconds(beat.duration))).equals(Buffer.from(full))).toBe(true); // deterministic regeneration
     const [start, end] = segmentBounds(beat);
     const cut = sliceWav(full, start, end - start);
     const sr = new DataView(full).getUint32(24, true);
     expect(cut.byteLength).toBe(44 + 60 * sr * 2);
-    expect(new Uint8Array(cut, 44)).toEqual(new Uint8Array(full, 44 + start * sr * 2, 60 * sr * 2));
+    expect(Buffer.from(cut, 44).equals(Buffer.from(full, 44 + start * sr * 2, 60 * sr * 2))).toBe(true);
   });
 });
