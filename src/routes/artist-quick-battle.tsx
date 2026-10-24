@@ -158,7 +158,7 @@ function ArtistQuickBattle() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [name, left, demo]);
   useEffect(() => {
-    if (isUpload || left !== 0 || !timed(name) || false) return;
+    if (isUpload || left !== 0 || !timed(name)) return;
     advance();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [left, stage, vote]);
