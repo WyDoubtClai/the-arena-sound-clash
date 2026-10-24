@@ -17,7 +17,7 @@ export const Route = createFileRoute("/compete")({
 
 const modes = [
   { icon: Zap, color: "violet", title: "Producer Quick Battle", rules: ["8 producers", "15 min create + 3 min upload", "45-second beat entry", "Shared sample kit"], cta: "Enter the Gauntlet", to: "/gauntlet" as const },
-  { icon: Disc3, color: "coral", title: "Artist Quick Battle", rules: ["Beat drawn from The Crate", "15 min to write & record", "60-second entry", "Live crowd judging"], cta: "Try Crate Draw", to: "/crate" as const },
+  { icon: Disc3, color: "coral", title: "Artist Quick Battle", rules: ["Beat drawn from The Crate", "15 min to write & record", "60-second entry", "Live crowd judging"], cta: "Enter Artist Quick Battle", to: "/artist-quick-battle" as const },
   { icon: Users, color: "teal", title: "Custom Battle Rooms", rules: ["Up to 20 people", "Pick performers & judges", "Your own rules & timers", "Private or public"], cta: "Create Room" },
   { icon: ListMusic, color: "gold", title: "Song-for-Song", rules: ["1–8 songs per side", "Head-to-head rounds", "Judge panel scoring", "Full tracks allowed"], cta: "Challenge Someone" },
 ];

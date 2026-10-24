@@ -8,6 +8,7 @@ import { fmt, usePlayer } from "@/lib/player";
 import { beatUrl } from "@/lib/synth";
 import { Avatar, Panel, Waveform } from "@/components/arena/bits";
 import { Switch } from "@/components/ui/switch";
+import { BattleParticipants, BattleCountdown, BattleRating } from "@/components/arena/battle-controls";
 
 export const Route = createFileRoute("/gauntlet")({
   head: () => ({
@@ -160,10 +161,7 @@ function Gauntlet() {
 
       {stage >= 1 && stage <= 3 && (
         <Panel className="flex flex-wrap items-center justify-between gap-4 border-violet/40">
-          <div>
-            <p className="text-xs uppercase tracking-widest text-muted-foreground">{stage === 1 ? "Kit download window" : stage === 2 ? "Creation countdown" : "Upload window closes in"}</p>
-            <p className={cn("font-display text-5xl font-bold tabular-nums", left < 60 && stage > 1 ? "text-coral" : "text-foreground")}>{fmt(left)}</p>
-          </div>
+          <BattleCountdown label={stage === 1 ? "Kit download window" : stage === 2 ? "Creation countdown" : "Upload window closes in"} left={left} urgent={stage > 1} />
           <div className="h-2 min-w-48 flex-1 overflow-hidden rounded-full bg-muted"><div className="h-full bg-gradient-to-r from-violet to-coral transition-all" style={{ width: `${100 - (left / durations[stage]) * 100}%` }} /></div>
         </Panel>
       )}
@@ -172,18 +170,7 @@ function Gauntlet() {
         <Panel>
           <h2 className="text-xl font-bold">Waiting Room</h2>
           <p className="text-sm text-muted-foreground">Battle starts when all 8 producers are ready.</p>
-          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {roster.map((id) => {
-              const r = ready.includes(id);
-              return (
-                <div key={id} className={cn("flex flex-col items-center gap-2 rounded-xl border p-4", r && "border-teal/60 bg-teal/5")}>
-                  <Avatar id={id} size={56} />
-                  <p className="text-sm font-semibold">{id === me.id ? "You" : byId(id).name}</p>
-                  <span className={cn("text-xs", r ? "text-teal" : "text-muted-foreground")}>{r ? "READY" : "waiting…"}</span>
-                </div>
-              );
-            })}
-          </div>
+          <BattleParticipants roster={roster} ready={ready} />
           <button disabled={ready.includes(me.id)} onClick={() => setReady((r) => [...r, me.id])} className="mt-6 w-full rounded-xl bg-violet py-3 font-semibold text-primary-foreground glow-violet disabled:opacity-50">{ready.includes(me.id) ? `Ready! (${ready.length}/8)` : "Ready Up"}</button>
         </Panel>
       )}
@@ -250,17 +237,7 @@ function Gauntlet() {
             </div>
             <div className="mt-6">
               <p className="mb-2 text-sm font-semibold">Rate this beat</p>
-              {roster[idx] === me.id ? (
-                <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">You can't rate your own entry.</p>
-              ) : (
-                <div className="flex gap-2" role="radiogroup" aria-label="Rating">
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <button key={n} role="radio" aria-checked={myRatings[idx] === n} aria-label={`${n} stars`} onClick={() => setMyRatings({ ...myRatings, [idx]: n })} className={cn("grid h-11 w-11 place-items-center rounded-lg border", (myRatings[idx] ?? 0) >= n ? "border-gold bg-gold/15 text-gold" : "text-muted-foreground")}>
-                      <Star className={cn("h-5 w-5", (myRatings[idx] ?? 0) >= n && "fill-current")} />
-                    </button>
-                  ))}
-                </div>
-              )}
+              <BattleRating own={roster[idx] === me.id} value={myRatings[idx]} onChange={(n) => setMyRatings({ ...myRatings, [idx]: n })} />
             </div>
             <div className="mt-6 flex flex-wrap gap-2">
               {emojis.map((e) => <button key={e} aria-label={`React ${e}`} onClick={() => burst(e)} className="grid h-10 w-10 place-items-center rounded-full border bg-background text-xl transition hover:scale-110">{e}</button>)}

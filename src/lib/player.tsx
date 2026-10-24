@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { beatUrl } from "./synth";
 
-export type Track = { id: string; title: string; artist: string; seed: number; genre?: string };
+export type Track = { id: string; title: string; artist: string; seed: number; genre?: string; seconds?: number; segmentStart?: number; segmentDuration?: number };
 
 type PlayerState = {
   track: Track | null;
@@ -21,6 +21,7 @@ const Ctx = createContext<PlayerState | null>(null);
 
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const audio = useRef<HTMLAudioElement | null>(null);
+  const active = useRef<Track | null>(null);
   const [track, setTrack] = useState<Track | null>(null);
   const [playing, setPlaying] = useState(false);
   const [time, setTime] = useState(0);
@@ -32,8 +33,17 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     a.volume = 0.7;
     a.onplay = () => setPlaying(true);
     a.onpause = () => setPlaying(false);
-    a.ontimeupdate = () => setTime(a.currentTime);
-    a.onloadedmetadata = () => setDuration(a.duration || 30);
+    a.ontimeupdate = () => {
+      const t = active.current;
+      const elapsed = a.currentTime - (t?.segmentStart ?? 0);
+      setTime(Math.max(0, Math.min(elapsed, t?.segmentDuration ?? a.duration)));
+      if (t?.segmentDuration && elapsed >= t.segmentDuration) a.pause();
+    };
+    a.onloadedmetadata = () => {
+      const t = active.current;
+      setDuration(t?.segmentDuration ?? (a.duration || 30));
+      if (t?.segmentStart) a.currentTime = t.segmentStart;
+    };
     a.onended = () => setPlaying(false);
     audio.current = a;
     return () => a.pause();
@@ -43,11 +53,14 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     const a = audio.current;
     if (!a) return;
     if (track?.id !== t.id) {
-      a.src = beatUrl(t.seed);
+      active.current = t;
+      a.src = beatUrl(t.seed, t.seconds ?? 30);
       setTrack(t);
       setTime(0);
+      setDuration(t.segmentDuration ?? t.seconds ?? 30);
     }
-    void a.play();
+    if (t.segmentDuration && a.currentTime >= (t.segmentStart ?? 0) + t.segmentDuration) a.currentTime = t.segmentStart ?? 0;
+    void a.play().catch(() => setPlaying(false));
   }, [track]);
 
   const value: PlayerState = {
@@ -55,10 +68,13 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     toggle: () => {
       const a = audio.current;
       if (!a || !track) return;
-      if (a.paused) void a.play(); else a.pause();
+      if (a.paused) {
+        if (track.segmentDuration && a.currentTime >= (track.segmentStart ?? 0) + track.segmentDuration) a.currentTime = track.segmentStart ?? 0;
+        void a.play().catch(() => setPlaying(false));
+      } else a.pause();
     },
     pause: () => audio.current?.pause(),
-    seek: (s) => { if (audio.current) audio.current.currentTime = s; },
+    seek: (s) => { if (audio.current) audio.current.currentTime = Math.max(0, Math.min(s, duration)) + (track?.segmentStart ?? 0); },
     setVolume: (v) => { setVol(v); if (audio.current) audio.current.volume = v; },
     isCurrent: (id) => track?.id === id && playing,
   };
