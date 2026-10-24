@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Check, Download, FastForward, Pause, Play, RotateCcw, Send, Trophy, Upload } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { byId, me } from "@/lib/data";
@@ -27,7 +27,21 @@ export const Route = createFileRoute("/gauntlet")({
 const roster = [me.id, "tonemadelt", "dretracks", "kayobeats", "kairo", "flexmadelt", "soundmason", "novarae"];
 const stages = ["Ready Up", "Sample Kit", "Create", "Upload", "Listen & Judge", "Results"] as const;
 type Stage = 0 | 1 | 2 | 3 | 4 | 5;
-const durations: Record<number, number> = { 1: 20, 2: 15 * 60, 3: 3 * 60 };
+const durations = { 2: 15 * 60, 3: 3 * 60 };
+type ClockState = { stage: Stage; left: number };
+type ClockAction = { type: "advance"; from: Stage } | { type: "tick"; from: Stage; seconds: number } | { type: "reset" };
+const clockAt = (stage: Stage): ClockState => ({ stage, left: stage === 2 || stage === 3 ? durations[stage] : 0 });
+
+function clockReducer(state: ClockState, action: ClockAction): ClockState {
+  if (action.type === "reset") return clockAt(0);
+  // Ignore duplicate transitions or ticks queued by a previous stage.
+  if (action.from !== state.stage) return state;
+  if (action.type === "advance") return clockAt(Math.min(5, state.stage + 1) as Stage);
+  if (state.stage !== 2 && state.stage !== 3) return state;
+  const left = Math.max(0, state.left - action.seconds);
+  // Initialize the next stage's clock in the same update as its stage.
+  return left === 0 ? clockAt((state.stage + 1) as Stage) : { ...state, left };
+}
 const SEG = 45;
 const emojis = ["🔥", "💯", "😮", "😍", "👏", "🎧", "🤯", "😤", "🙌", "😂"];
 const kit = ["Dusty Rhodes Chord.wav", "Vinyl Crackle Loop.wav", "808 Boom (C).wav", "Choir Stab.wav", "Perc Shaker.wav"];
@@ -35,9 +49,8 @@ const chatLines = ["this kit is crazy 😤", "that bounce tho", "drums hitting d
 
 function Gauntlet() {
   const pl = usePlayer();
-  const [stage, setStage] = useState<Stage>(0);
+  const [{ stage, left }, dispatchClock] = useReducer(clockReducer, clockAt(0));
   const [demo, setDemo] = useState(true);
-  const [left, setLeft] = useState(0);
   const [ready, setReady] = useState<string[]>([]);
   const [downloaded, setDownloaded] = useState(false);
   const [uploaded, setUploaded] = useState<string | null>(null);
@@ -53,21 +66,12 @@ function Gauntlet() {
 
   const botRatings = useMemo(() => roster.map((_, i) => Array.from({ length: 7 }, (_, k) => 2.5 + ((i * 7 + k * 3) % 5) * 0.55)), []);
 
-  // stage timers
+  // Only creation and upload are timed; the kit waits for Start Creation or Skip.
   useEffect(() => {
-    if (stage >= 1 && stage <= 3) setLeft(durations[stage]);
-  }, [stage]);
-  useEffect(() => {
-    if (stage < 1 || stage > 3) return;
-    const id = setInterval(() => setLeft((l) => Math.max(0, l - speed)), 1000);
+    if (stage !== 2 && stage !== 3) return;
+    const id = setInterval(() => dispatchClock({ type: "tick", from: stage, seconds: speed }), 1000);
     return () => clearInterval(id);
   }, [stage, speed]);
-  useEffect(() => {
-    if (stage >= 1 && stage <= 3 && left === 0) {
-      if (stage === 3 && !uploaded) setUploaded("auto-submitted_draft.wav");
-      setStage((s) => (s + 1) as Stage);
-    }
-  }, [left, stage, uploaded]);
 
   // waiting room: bots ready up
   useEffect(() => {
@@ -77,13 +81,14 @@ function Gauntlet() {
   }, [stage, demo]);
   useEffect(() => {
     if (stage !== 0 || ready.length !== 8) return undefined;
-    const t = setTimeout(() => setStage(1), 800);
+    const t = setTimeout(() => dispatchClock({ type: "advance", from: 0 }), 800);
     return () => clearTimeout(t);
   }, [ready, stage]);
 
   // listening session
   useEffect(() => {
     if (stage !== 4) { audio.current?.pause(); return; }
+    setUploaded((file) => file ?? "auto-submitted_draft.wav");
     pl.pause(); // auto-pause global player
     toast("Global player paused for the live listening session");
     const a = new Audio();
@@ -100,6 +105,7 @@ function Gauntlet() {
     void a.play().catch(() => {});
     a.ontimeupdate = () => setPos(a.currentTime);
     a.onended = () => next();
+    return () => { a.ontimeupdate = null; a.onended = null; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage, idx]);
   useEffect(() => { if (audio.current) audio.current.playbackRate = demo ? 2 : 1; }, [demo]);
@@ -121,15 +127,22 @@ function Gauntlet() {
     setTimeout(() => setBursts((b) => b.filter((x) => x.id !== id)), 2200);
   }
   function next() {
-    setIdx((i) => { if (i >= 7) { setStage(5); return i; } return i + 1; });
+    if (idx >= 7) dispatchClock({ type: "advance", from: 4 });
+    else setIdx(idx + 1);
   }
   function reset() {
-    setStage(0); setReady([]); setDownloaded(false); setUploaded(null); setIdx(0); setMyRatings({});
+    audio.current?.pause();
+    dispatchClock({ type: "reset" });
+    setReady([]); setDownloaded(false); setUploaded(null); setIdx(0); setMyRatings({});
+    setPos(0); setDrag(false); setBursts([]); setMsg("");
+    setChat([{ who: "judgeraye", t: "Welcome to Gauntlet #2041 🎛️" }]);
   }
   function skip() {
-    if (stage === 0) { setReady(roster.slice()); setStage(1); }
-    else if (stage >= 1 && stage <= 3) setLeft(0);
-    else if (stage === 4) next();
+    if (stage === 4) next();
+    else if (stage < 4) {
+      if (stage === 0) setReady(roster.slice());
+      dispatchClock({ type: "advance", from: stage });
+    }
   }
 
   const results = roster.map((id, i) => {
@@ -161,9 +174,9 @@ function Gauntlet() {
         ))}
       </ol>
 
-      {stage >= 1 && stage <= 3 && (
+      {(stage === 2 || stage === 3) && (
         <Panel className="flex flex-wrap items-center justify-between gap-4 border-violet/40">
-          <BattleCountdown label={stage === 1 ? "Kit download window" : stage === 2 ? "Creation countdown" : "Upload window closes in"} left={left} urgent={stage > 1} />
+          <BattleCountdown label={stage === 2 ? "Creation countdown" : "Upload window closes in"} left={left} urgent />
           <div className="h-2 min-w-48 flex-1 overflow-hidden rounded-full bg-muted"><div className="h-full bg-gradient-to-r from-violet to-coral transition-all" style={{ width: `${100 - (left / durations[stage]) * 100}%` }} /></div>
         </Panel>
       )}
@@ -184,6 +197,7 @@ function Gauntlet() {
             <div key={k} className="flex items-center gap-3 rounded-xl border bg-background p-3"><Waveform seed={200 + i} bars={24} className="h-6 max-w-24" /><span className="truncate text-sm">{k}</span></div>
           ))}</div>
           <button onClick={() => { setDownloaded(true); toast.success("Kit downloaded (5 files, 12 MB)"); }} className="flex items-center gap-2 rounded-xl bg-teal px-5 py-2.5 font-semibold text-primary-foreground"><Download className="h-4 w-4" />{downloaded ? "Downloaded ✓" : "Download Kit"}</button>
+          <button onClick={() => dispatchClock({ type: "advance", from: 1 })} className="rounded-lg bg-violet px-5 py-2.5 text-sm font-semibold text-primary-foreground">Start Creation</button>
         </Panel>
       )}
 
@@ -213,7 +227,7 @@ function Gauntlet() {
           </label>
           <div className="mt-4 flex flex-wrap gap-3">
             <button onClick={() => setUploaded("sunday_service_flip_FINAL.wav")} className="rounded-lg border px-4 py-2 text-sm">Simulate upload</button>
-            <button disabled={!uploaded} onClick={() => setLeft(0)} className="rounded-lg bg-violet px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-40">Lock In & Continue</button>
+            <button disabled={!uploaded} onClick={() => dispatchClock({ type: "advance", from: 3 })} className="rounded-lg bg-violet px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-40">Lock In & Continue</button>
           </div>
         </Panel>
       )}
