@@ -63,9 +63,9 @@ function Discover() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6">
       <PageHeader title="Discover" sub="Demo creators, tracks and Crate beats — prototype data, not live popularity." />
-      <div className="space-y-3">
+      <div className="min-w-0 space-y-3">
         <div className="flex items-center gap-2">
           <label className="relative flex-1">
             <span className="sr-only">Search Discover</span>
