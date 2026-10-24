@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CompeteRouteImport } from './routes/compete'
+import { Route as GauntletRouteImport } from './routes/gauntlet'
 import { Route as LobbyRouteImport } from './routes/lobby'
 
 const IndexRoute = IndexRouteImport.update({
@@ -23,6 +24,11 @@ const CompeteRoute = CompeteRouteImport.update({
   path: '/compete',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GauntletRoute = GauntletRouteImport.update({
+  id: '/gauntlet',
+  path: '/gauntlet',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LobbyRoute = LobbyRouteImport.update({
   id: '/lobby',
   path: '/lobby',
@@ -32,30 +38,34 @@ const LobbyRoute = LobbyRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/compete': typeof CompeteRoute
+  '/gauntlet': typeof GauntletRoute
   '/lobby': typeof LobbyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/compete': typeof CompeteRoute
+  '/gauntlet': typeof GauntletRoute
   '/lobby': typeof LobbyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/compete': typeof CompeteRoute
+  '/gauntlet': typeof GauntletRoute
   '/lobby': typeof LobbyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/compete' | '/lobby'
+  fullPaths: '/' | '/compete' | '/gauntlet' | '/lobby'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/compete' | '/lobby'
-  id: '__root__' | '/' | '/compete' | '/lobby'
+  to: '/' | '/compete' | '/gauntlet' | '/lobby'
+  id: '__root__' | '/' | '/compete' | '/gauntlet' | '/lobby'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CompeteRoute: typeof CompeteRoute
+  GauntletRoute: typeof GauntletRoute
   LobbyRoute: typeof LobbyRoute
 }
 
@@ -75,6 +85,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CompeteRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/gauntlet': {
+      id: '/gauntlet'
+      path: '/gauntlet'
+      fullPath: '/gauntlet'
+      preLoaderRoute: typeof GauntletRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/lobby': {
       id: '/lobby'
       path: '/lobby'
@@ -88,6 +105,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CompeteRoute: CompeteRoute,
+  GauntletRoute: GauntletRoute,
   LobbyRoute: LobbyRoute,
 }
 export const routeTree = rootRouteImport
