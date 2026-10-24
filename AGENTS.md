@@ -13,5 +13,6 @@
 - Share participant, countdown and scoring controls between artist and producer demos; preserve producer-specific stages and rules.
 - Artist demo voting uses seeded draws and a documented simulated ballot; keep the simulation reproducible and testable.
 - Artist audio uses the shared player with optional segment bounds so previews and judging never overlap.
+- Artist battle formats share one upload window whose single close (all eight submitted or timer zero) decides the judged entries; downloads slice the cached render the player streams so preview and file match.
 - Keep profile demo fixtures and owner/showcase eligibility in a browser-safe profile module; this makes role separation and local control rules testable without changing battle engines.
 - Keep Lobby demo state and selection/count helpers in a browser-safe module, persisting only local additions and interactions after hydration; this preserves seeded content and avoids changing progression or backend systems.

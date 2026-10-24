@@ -12,3 +12,5 @@
 - [x] Improve category/search/topic discovery, collaboration details and honest demo attachments.
 - [x] Validate posting, conversation counts, refresh, audio and desktop/mobile layouts.
 - [x] Discover upgrade: role/genre filters, search, creator cards, Crate beats, verified profile links
+# Artist Quick Battle formats
+- [x] Creation Battle + Song-for-Song, shared 3-min upload with early advance, exact 60s excerpt download, real local file judging, missing-entry exclusion.
