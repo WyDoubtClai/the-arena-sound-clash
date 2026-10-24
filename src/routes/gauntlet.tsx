@@ -73,7 +73,9 @@ function Gauntlet() {
     return () => clearInterval(id);
   }, [stage, demo]);
   useEffect(() => {
-    if (stage === 0 && ready.length === 8) { const t = setTimeout(() => setStage(1), 800); return () => clearTimeout(t); }
+    if (stage !== 0 || ready.length !== 8) return undefined;
+    const t = setTimeout(() => setStage(1), 800);
+    return () => clearTimeout(t);
   }, [ready, stage]);
 
   // listening session
