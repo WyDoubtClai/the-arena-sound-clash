@@ -58,3 +58,17 @@ export function useVault() {
     reset: () => writeVault([]),
   };
 }
+
+/** Regenerates the exact full-length demo WAV from stored seed/length; no audio is kept in storage. */
+export async function downloadRewardFile(reward: VaultReward, viewerId: string) {
+  if (!canDownloadReward(reward, viewerId)) return false;
+  const { fullWav } = await import("./synth");
+  const blob = fullWav(reward.seed, reward.seconds);
+  if (!blob) return false;
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `${reward.beatTitle.replace(/\W+/g, "_")}_full_demo.wav`;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(link.href), 4000);
+  return true;
+}
