@@ -7,3 +7,7 @@
 # Focused profile upgrade
 - [x] Preserve profile presentation and playback; add role-specific demo records, match history, achievements and visitor controls.
 - [x] Validate profile switching, tabs, playback, navigation and desktop/mobile layouts.
+# Focused Lobby upgrade
+- [x] Preserve the feed; add persistent local posting, reactions, follows, comments and shallow replies.
+- [x] Improve category/search/topic discovery, collaboration details and honest demo attachments.
+- [x] Validate posting, conversation counts, refresh, audio and desktop/mobile layouts.
