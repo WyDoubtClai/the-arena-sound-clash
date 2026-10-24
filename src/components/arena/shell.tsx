@@ -104,13 +104,13 @@ function TopBar() {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   return (
-    <header className="sticky top-0 z-20 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-b bg-background/85 px-4 py-3 backdrop-blur md:px-6">
+    <header className="sticky top-0 z-20 grid grid-cols-[auto_minmax(0,1fr)_auto] lg:grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b bg-background/85 px-4 py-3 backdrop-blur md:px-6">
       <div className="lg:hidden"><Logo /></div>
-      <form className="relative lg:col-span-1 lg:col-start-1 lg:max-w-md" onSubmit={(e) => { e.preventDefault(); if (q) toast(`Searching for “${q}”…`); }} role="search">
+      <form className="relative lg:max-w-md" onSubmit={(e) => { e.preventDefault(); if (q) toast(`Searching for “${q}”…`); }} role="search">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <input value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search" placeholder="Search artists, beats, people…" className="w-full rounded-full border bg-surface py-2 pl-9 pr-3 text-sm outline-none focus:border-violet" />
       </form>
-      <div className="flex items-center gap-2 lg:col-start-3">
+      <div className="flex items-center gap-2">
         <div className="relative">
           <button aria-label="Notifications" onClick={() => setOpen(!open)} className="relative grid h-9 w-9 place-items-center rounded-full border bg-surface hover:border-violet">
             <Bell className="h-4 w-4" />
