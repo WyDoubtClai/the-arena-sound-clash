@@ -16,6 +16,9 @@ export const people: Person[] = [
   { id: "judgeraye", name: "Judge Raye", role: "Judge", level: 20, hue: 45, xp: 3120, rep: 1450, record: [0, 0, 0], followers: "8.8K" },
   { id: "flexmadelt", name: "FlexMadelt", role: "Producer", level: 11, hue: 120, xp: 1210, rep: 390, record: [7, 7, 1], followers: "2.0K" },
   { id: "echo", name: "EchoListens", role: "Listener", level: 6, hue: 220, xp: 640, rep: 220, record: [0, 0, 0], followers: "310" },
+  { id: "verse", name: "Verse", role: "Artist", level: 9, hue: 190, xp: 980, rep: 320, record: [5, 3, 1] },
+  { id: "amira", name: "Amira", role: "Artist", level: 11, hue: 85, xp: 1320, rep: 450, record: [7, 2, 0] },
+  { id: "juno", name: "Juno", role: "Artist", level: 10, hue: 250, xp: 1110, rep: 380, record: [6, 4, 0] },
 ];
 export const me = people[0];
 export const byId = (id: string) => people.find((p) => p.id === id)!;
