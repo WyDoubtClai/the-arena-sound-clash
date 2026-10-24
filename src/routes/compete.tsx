@@ -21,7 +21,7 @@ const modes = [
   { icon: Zap, color: "violet", title: "Producer Quick Battle", rules: ["8 producers", "15 min create + 3 min upload", "45-second beat entry", "Shared sample kit"], cta: "Enter the Gauntlet", to: "/gauntlet" as const },
   { icon: Disc3, color: "coral", title: "Artist Quick Battle", rules: ["Beat drawn from The Crate", "15 min to write & record", "60-second entry", "Live crowd judging"], cta: "Enter Artist Quick Battle", to: "/artist-quick-battle" as const },
   { icon: Users, color: "teal", title: "Custom Battle Rooms", rules: ["Up to 20 people", "Pick performers & judges", "Your own rules & timers", "Private or public"], cta: "Create Room" },
-  { icon: ListMusic, color: "gold", title: "Song-for-Song", rules: ["1–8 songs per side", "Head-to-head rounds", "Judge panel scoring", "Full tracks allowed"], cta: "Challenge Someone" },
+  { icon: ListMusic, color: "gold", title: "Song-for-Song", rules: ["8 artists, finished songs", "Shared 3-minute upload", "No beat draw or creation timer", "Full tracks allowed"], cta: "Enter Song-for-Song", to: "/artist-quick-battle" as const, search: { format: "song" as const } },
 ];
 
 const live = [
@@ -43,7 +43,7 @@ function Compete() {
             <h3 className="text-lg font-bold">{m.title}</h3>
             <ul className="flex-1 space-y-1.5 text-sm text-muted-foreground">{m.rules.map((r) => <li key={r}>• {r}</li>)}</ul>
             {m.to ? (
-              <Link to={m.to} className="rounded-lg py-2 text-center text-sm font-semibold text-primary-foreground" style={{ background: `var(--${m.color})` }}>{m.cta}</Link>
+              <Link to={m.to} search={"search" in m ? m.search : {}} className="rounded-lg py-2 text-center text-sm font-semibold text-primary-foreground" style={{ background: `var(--${m.color})` }}>{m.cta}</Link>
             ) : (
               <button onClick={() => toast.success(`${m.title}: coming in Phase 2`)} className="rounded-lg py-2 text-sm font-semibold text-primary-foreground" style={{ background: `var(--${m.color})` }}>{m.cta}</button>
             )}
