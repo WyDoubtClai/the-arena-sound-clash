@@ -10,33 +10,53 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CompeteRouteImport } from './routes/compete'
+import { Route as LobbyRouteImport } from './routes/lobby'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CompeteRoute = CompeteRouteImport.update({
+  id: '/compete',
+  path: '/compete',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LobbyRoute = LobbyRouteImport.update({
+  id: '/lobby',
+  path: '/lobby',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/compete': typeof CompeteRoute
+  '/lobby': typeof LobbyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/compete': typeof CompeteRoute
+  '/lobby': typeof LobbyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/compete': typeof CompeteRoute
+  '/lobby': typeof LobbyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/compete' | '/lobby'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/compete' | '/lobby'
+  id: '__root__' | '/' | '/compete' | '/lobby'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CompeteRoute: typeof CompeteRoute
+  LobbyRoute: typeof LobbyRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +68,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/compete': {
+      id: '/compete'
+      path: '/compete'
+      fullPath: '/compete'
+      preLoaderRoute: typeof CompeteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lobby': {
+      id: '/lobby'
+      path: '/lobby'
+      fullPath: '/lobby'
+      preLoaderRoute: typeof LobbyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CompeteRoute: CompeteRoute,
+  LobbyRoute: LobbyRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
