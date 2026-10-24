@@ -1,8 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { Gift, Sparkles, Upload, Vote } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { Gift, Search, Upload } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { UPLOAD_LIMITS } from "@/lib/artist-battle";
 import { beats, byId, genres } from "@/lib/data";
 import { Panel, PageHeader, Pills, PlayButton, Section, Waveform } from "@/components/arena/bits";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -21,24 +22,20 @@ export const Route = createFileRoute("/crate")({
 });
 
 const filters = ["All", ...genres] as const;
-const draw = [
-  { id: "d1", name: "Instrumental A", seed: 51, meta: "Trap · 140 BPM" },
-  { id: "d2", name: "Instrumental B", seed: 52, meta: "R&B · 90 BPM" },
-  { id: "d3", name: "Instrumental C", seed: 53, meta: "Drill · 144 BPM" },
-  { id: "d4", name: "Instrumental D", seed: 54, meta: "Soul · 84 BPM" },
-];
-
 function Crate() {
   const [g, setG] = useState<(typeof filters)[number]>("All");
   const [open, setOpen] = useState(false);
-  const list = beats.filter((b) => g === "All" || b.genre === g);
+  const [query, setQuery] = useState("");
+  const [producer, setProducer] = useState<string | null>(null);
+  const list = beats.filter((b) => (g === "All" || b.genre === g) && `${b.title} ${byId(b.producer).name}`.toLowerCase().includes(query.toLowerCase()));
   return (
     <div className="space-y-8">
       <PageHeader title="The Crate" sub="Battle-ready instrumentals from the community.">
-        <button onClick={() => setOpen(true)} className="flex items-center gap-2 rounded-lg bg-violet px-4 py-2 text-sm font-semibold text-primary-foreground glow-violet"><Upload className="h-4 w-4" />Upload Beat</button>
+        <Button onClick={() => setOpen(true)} className="flex items-center gap-2 rounded-lg bg-violet px-4 py-2 text-sm font-semibold text-primary-foreground glow-violet"><Upload className="h-4 w-4" />Upload Beat</Button>
       </PageHeader>
-      <CrateDraw />
+
       <Section title="Browse Beats">
+        <label className="flex items-center gap-2 rounded-lg border bg-surface px-3 py-2"><Search className="h-4 w-4 text-muted-foreground" /><input aria-label="Search beats or producers" placeholder="Search beats or producers…" value={query} onChange={(e) => setQuery(e.target.value)} className="min-w-0 flex-1 bg-transparent text-sm outline-none" /></label>
         <Pills items={filters} value={g} onChange={setG} />
         <div className="space-y-2">
           {list.map((b) => (
@@ -46,58 +43,40 @@ function Crate() {
               <PlayButton track={{ id: b.id, title: b.title, artist: byId(b.producer).name, seed: b.seed }} />
               <div className="min-w-0">
                 <p className="flex items-center gap-2 truncate font-semibold">{b.title}{b.giveaway && <span className="flex items-center gap-1 rounded bg-gold/15 px-1.5 py-0.5 text-[10px] text-gold"><Gift className="h-3 w-3" />Giveaway</span>}</p>
-                <p className="truncate text-xs text-muted-foreground">{byId(b.producer).name} · {b.genre} · {b.bpm} BPM · {b.key} · {b.duration}</p>
+                <p className="truncate text-xs text-muted-foreground"><Button variant="link" className="h-auto p-0 text-xs" onClick={() => setProducer(b.producer)}>{byId(b.producer).name}</Button> · {b.genre} · {b.bpm} BPM · {b.key} · {b.duration}</p>
               </div>
               <div className="hidden items-center gap-2 md:flex"><Waveform seed={b.seed} bars={40} className="h-7" /></div>
               <span className="rounded-full border border-teal/40 px-2 py-0.5 text-[10px] text-teal">60s · {b.segment}</span>
             </Panel>
           ))}
+          {list.length === 0 && <p className="py-6 text-sm text-muted-foreground">No beats found.</p>}
         </div>
       </Section>
+      <Dialog open={producer !== null} onOpenChange={(o) => { if (!o) setProducer(null); }}>
+        <DialogContent className="bg-surface"><DialogHeader><DialogTitle>{producer ? byId(producer).name : "Producer"}</DialogTitle></DialogHeader>
+          {producer && <><p className="text-sm text-muted-foreground">Producer · Level {byId(producer).level} · {byId(producer).followers} followers</p><div className="grid grid-cols-3 gap-3 text-center">{[[86, "Crate Draws"], [31, "Picks"], [19, "Battle Wins"]].map(([v, label]) => <div key={label}><p className="text-2xl font-bold text-violet">{v}</p><p className="text-xs text-muted-foreground">{label}</p></div>)}</div><p className="text-xs text-muted-foreground">Fictional exposure statistics.</p>{producer === "tonemadelt" && <Button asChild variant="outline"><Link to="/profile">View Profile</Link></Button>}</>}
+        </DialogContent>
+      </Dialog>
       <UploadModal open={open} onOpenChange={setOpen} />
     </div>
   );
 }
 
-function CrateDraw() {
-  const [vote, setVote] = useState<string | null>(null);
-  const [revealed, setRevealed] = useState<string | null>(null);
-  const [spinning, setSpinning] = useState(false);
-  return (
-    <Panel className="space-y-4 border-violet/40 bg-gradient-to-br from-violet/10 to-transparent">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div><h2 className="text-xl font-bold">Crate Draw Demo</h2><p className="text-sm text-muted-foreground">Audition 4 blind snippets, vote, and reveal the battle beat.</p></div>
-        <button disabled={!vote || spinning} onClick={() => { setSpinning(true); setRevealed(null); setTimeout(() => { setRevealed(Math.random() < 0.6 ? vote! : draw[Math.floor(Math.random() * 4)].id); setSpinning(false); }, 1600); }} className="flex items-center gap-2 rounded-lg bg-coral px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-40"><Sparkles className="h-4 w-4" />{spinning ? "Drawing…" : "Reveal Pick"}</button>
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {draw.map((d, i) => {
-          const win = revealed === d.id;
-          return (
-            <div key={d.id} className={cn("space-y-3 rounded-xl border bg-background p-4 transition", spinning && "animate-pulse", win && "border-gold glow-violet", revealed && !win && "opacity-40")}>
-              <div className="flex items-center gap-3"><PlayButton size="sm" track={{ id: d.id, title: d.name, artist: "Crate Draw", seed: d.seed }} /><div><p className="text-sm font-semibold">{win ? beats[i].title : d.name}</p><p className="text-xs text-muted-foreground">{win ? `by ${byId(beats[i].producer).name}` : d.meta}</p></div></div>
-              <Waveform seed={d.seed} bars={30} className="h-6" />
-              <button onClick={() => setVote(d.id)} aria-pressed={vote === d.id} className={cn("flex w-full items-center justify-center gap-1 rounded-lg border py-1.5 text-xs", vote === d.id ? "border-violet bg-violet text-primary-foreground" : "")}><Vote className="h-3 w-3" />{vote === d.id ? "Your vote" : "Vote"}</button>
-              {win && <p className="text-center text-xs font-bold text-gold">🏆 SELECTED</p>}
-            </div>
-          );
-        })}
-      </div>
-    </Panel>
-  );
-}
-
 function UploadModal({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   const [start, setStart] = useState([40]);
+  const [file, setFile] = useState<string | null>(null);
   const allowance = [
-    { l: "Last 24 hours", used: 1, max: 3 },
-    { l: "Last 7 days", used: 6, max: 10 },
-    { l: "Active beats", used: 22, max: 30 },
+    { l: "Last 24 hours", used: 1, max: UPLOAD_LIMITS[0] },
+    { l: "Last 7 days", used: 6, max: UPLOAD_LIMITS[1] },
+    { l: "Active beats", used: 22, max: UPLOAD_LIMITS[0]0 },
   ];
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl bg-surface">
         <DialogHeader><DialogTitle className="font-display">Upload to The Crate</DialogTitle></DialogHeader>
         <div className="space-y-4">
+          <p className="text-xs text-muted-foreground">Frontend upload preview only. No files are stored or published.</p>
+          <label className="block space-y-2 rounded-lg border border-dashed p-4"><span className="text-sm font-semibold">Full instrumental · WAV / MP3</span><input type="file" accept="audio/*" aria-label="Full instrumental" onChange={(e) => setFile(e.target.files?.[0]?.name ?? null)} className="block w-full text-xs" />{file && <span className="text-xs text-teal">{file} · local selection only</span>}</label>
           <div className="grid gap-3 sm:grid-cols-3">
             {allowance.map((a) => (
               <div key={a.l} className="rounded-xl border bg-background p-3"><p className="text-xs text-muted-foreground">{a.l}</p><p className="font-display text-xl font-bold">{a.used}/{a.max}</p><div className="mt-1 h-1.5 rounded-full bg-muted"><div className="h-full rounded-full bg-teal" style={{ width: `${(a.used / a.max) * 100}%` }} /></div></div>
@@ -115,7 +94,7 @@ function UploadModal({ open, onOpenChange }: { open: boolean; onOpenChange: (o: 
             {["Title", "Genre", "BPM", "Key"].map((f) => <input key={f} aria-label={f} placeholder={f} className="rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-violet" />)}
           </div>
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="accent-[var(--gold)]" /> Mark as giveaway (free for battle winners)</label>
-          <button onClick={() => { onOpenChange(false); toast.success("Beat submitted for review"); }} className="w-full rounded-xl bg-violet py-2.5 font-semibold text-primary-foreground">Submit Beat</button>
+          <Button onClick={() => { onOpenChange(false); toast.success("Upload preview complete — nothing stored or published"); }} className="w-full rounded-xl bg-violet py-2.5 font-semibold text-primary-foreground">Preview Submission</Button>
         </div>
       </DialogContent>
     </Dialog>
