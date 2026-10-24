@@ -8,7 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { ARTIST_ROSTER, BALLOT_SEED, DEMO_SPEED, FORMAT_LABEL, PERFORMANCE_LIMIT, PROMPT, UPLOAD_WINDOW, ballotLabel, canRate, closeBallot, drawBeats, rankEntries, seconds, segmentBounds, shouldCloseUpload, stagesFor, submittedIds, uploadSchedule, uploadStatus, validateAudioFile, type BattleFormat } from "@/lib/artist-battle";
 import { excerptWav } from "@/lib/synth";
-import { byId, me } from "@/lib/data";
+import { beats, byId, me } from "@/lib/data";
+import { downloadRewardFile, newBattleId, qualifiesForReward, rewardId, reservedBeatIds, useVault } from "@/lib/beat-vault";
+
+const BATTLE_KEY = "arena-aqb-battle-id";
 import { fmt, usePlayer, type Track } from "@/lib/player";
 import { cn } from "@/lib/utils";
 
@@ -66,7 +69,17 @@ function ArtistQuickBattle() {
   const played = useRef(false);
   const lastStage = useRef(0);
   const closedStage = useRef<number | null>(null);
-  const choices = useMemo(() => drawBeats(), []);
+  const vault = useVault();
+  const [battleId, setBattleId] = useState("");
+  useEffect(() => {
+    const saved = sessionStorage.getItem(BATTLE_KEY);
+    const id = saved ?? newBattleId();
+    if (!saved) sessionStorage.setItem(BATTLE_KEY, id);
+    setBattleId(id);
+  }, []);
+  const reservedKey = [...reservedBeatIds(vault.list)].sort().join(",");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const choices = useMemo(() => drawBeats(beats.filter((b) => !reservedBeatIds(vault.list).has(b.id))), [reservedKey]);
   const schedule = useMemo(() => uploadSchedule(oneMisses), [oneMisses]);
   const winner = ballot?.winner;
   const winnerVotes = ballot?.counts.find((row) => row.beat.id === winner?.id)?.count ?? 0;
@@ -107,6 +120,7 @@ function ArtistQuickBattle() {
   }
   function restart(nextFormat = format) {
     player.pause();
+    const fresh = newBattleId(); sessionStorage.setItem(BATTLE_KEY, fresh); setBattleId(fresh);
     if (mine?.url) URL.revokeObjectURL(mine.url);
     setStage(0); setLeft(0); setReady([]); setVote(null); setBallot(null); setLyrics(""); setMine(null); setFileError(null); setEntries([]); setClosedWith(null); setIndex(0); setRatings({}); setReactions([]);
     setChat(welcome()); setMessage(""); played.current = false; closedStage.current = null;
@@ -135,6 +149,14 @@ function ArtistQuickBattle() {
     setTimeout(() => URL.revokeObjectURL(link.href), 4000);
   }
   function react(value: string) { setReactions((previous) => [...previous.slice(-7), value]); }
+  const myRewardId = winner && battleId ? rewardId(battleId, winner.id) : "";
+  const myReward = vault.list.find((r) => r.id === myRewardId && r.artistId === me.id);
+  // Award once when an eligible Creation Battle ends with you in first place; the id makes it idempotent.
+  useEffect(() => {
+    if (name !== "Results" || !winner || !battleId || !qualifiesForReward(format, winner, results[0]?.id, me.id)) return;
+    vault.award({ id: rewardId(battleId, winner.id), battleId, battleName: "Artist Quick Battle #2042", artistId: me.id, beatId: winner.id, beatTitle: winner.title, producer: winner.producer, awardedAt: new Date().toISOString(), status: "awarded", seed: winner.seed, seconds: seconds(winner.duration) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [name, battleId, winner?.id, results[0]?.id]);
 
   useEffect(() => {
     if (stage !== 0) return;
@@ -263,7 +285,8 @@ function ArtistQuickBattle() {
       {results.length === 0 ? <p className="rounded-lg border border-dashed p-4 text-sm">No valid submissions arrived before the deadline, so nothing was judged and no placements or XP were given.</p>
         : <ol className="divide-y rounded-lg border">{results.map((result, i) => <li key={result.id} className={cn("flex items-center gap-3 p-3", result.id === me.id && "bg-violet/10")}><span className="w-4 font-bold text-muted-foreground">{i + 1}</span><Avatar id={result.id} size={32} /><span className="min-w-0 flex-1 truncate text-sm">{result.id === me.id ? "You (Blaze)" : byId(result.id).name}</span><span className="text-sm text-gold">{result.avg.toFixed(2)}★</span><span className="text-xs text-teal">+{XP[i]} XP (demo)</span></li>)}</ol>}
       {missing.length > 0 && <p className="text-sm text-muted-foreground">Missed deadline · not scored: {missing.map((id) => id === me.id ? "You" : byId(id).name).join(", ")}</p>}
-      {format === "creation" && winner && <div className="space-y-2 border-y py-4"><p className="text-sm">Producer credit: <strong>{byId(winner.producer).name}</strong> · {winner.title}</p>{winner.giveaway && results[0] && <p className="flex items-center gap-2 font-semibold text-gold"><Gift />Simulated Beat Gift: {byId(results[0].id).name}</p>}<p className="text-xs text-muted-foreground">No real license is issued in Phase 1. XP and rewards do not affect accounts.</p></div>}
+      {format === "creation" && winner && <div className="space-y-2 border-y py-4"><p className="text-sm">Producer credit: <strong>{byId(winner.producer).name}</strong> · {winner.title}</p>{winner.giveaway && results[0] && !myReward && <p className="flex items-center gap-2 font-semibold text-gold"><Gift />Simulated Beat Gift: {byId(results[0].id).name}</p>}{!winner.giveaway && <p className="text-xs text-muted-foreground">Competition Only beat · no instrumental is awarded.</p>}<p className="text-xs text-muted-foreground">No real license is issued in Phase 1. XP and rewards do not affect accounts.</p></div>}
+      {myReward && <Panel className="space-y-3 border-gold/60"><p className="flex items-center gap-2 text-lg font-bold text-gold"><Gift />You won the full instrumental: {myReward.beatTitle}</p><p className="text-sm text-muted-foreground">Produced by {byId(myReward.producer).name} · {myReward.status === "claimed" ? "Claimed" : "Awarded — Awaiting Claim"} · reserved for you and removed from future draws and purchases.</p><div className="flex flex-wrap gap-2"><Button onClick={async () => { if (await downloadRewardFile(myReward, me.id)) vault.claim(myReward.id, me.id); else toast.error("The full beat couldn't be prepared in this browser."); }}><Download />{myReward.status === "claimed" ? "Re-download Full Beat" : "Claim & Download Full Beat"}</Button><Button asChild variant="outline"><a href="/profile?tab=vault">View in My Beat Vault</a></Button></div><p className="text-xs text-muted-foreground">Phase 1 simulation: the full-length demo audio your 60s excerpt was cut from. No ownership, exclusive rights or commercial license. Saved in this browser only.</p></Panel>}
       <Button onClick={() => restart()}>Run it back</Button></section>}
   </div>;
 }

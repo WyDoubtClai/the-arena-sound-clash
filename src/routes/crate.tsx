@@ -1,3 +1,4 @@
+import { useVault, vaultStatus } from "@/lib/beat-vault";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Gift, Search, Upload } from "lucide-react";
 import { useState } from "react";
@@ -43,6 +44,7 @@ function producerStats(id: string) {
   return { selections: n * 2 + 14, battleUses: n + 9, artistWins: Math.round(n / 3) + 2, giveaways: own.filter((b) => b.giveaway).length * 4, sales: own.filter((b) => !b.giveaway).length * 7 + 3, producerWins: byId(id).record[0] };
 }
 function Crate() {
+  const vault = useVault();
   const [g, setG] = useState<(typeof filters)[number]>("All");
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -66,6 +68,7 @@ function Crate() {
             const p = byId(b.producer);
             const type = listingFor(b);
             const st = producerStats(b.producer);
+            const reward = vaultStatus(vault.list, b.id);
             return (
               <Panel key={b.id} className="group overflow-hidden p-0">
                 <div className="relative aspect-[16/9] overflow-hidden" style={{ background: `radial-gradient(circle at ${20 + (b.seed * 13) % 60}% 30%, hsl(${p.hue} 90% 60% / .55), transparent 60%), linear-gradient(135deg, hsl(${(p.hue + 40) % 360} 70% 22%), var(--background))` }}>
@@ -85,7 +88,8 @@ function Crate() {
                   <div className="grid grid-cols-3 gap-2 border-t pt-3 text-center">
                     {[[st.selections, "Selections"], [st.battleUses, "Battle uses"], [st.artistWins, "Artist wins"]].map(([v, l]) => <div key={l}><p className="font-display text-sm font-bold text-violet">{v}</p><p className="text-[10px] text-muted-foreground">{l}</p></div>)}
                   </div>
-                  {(type === "For Sale" || type === "Buy It or Win It") && <Button variant="outline" size="sm" className="w-full" onClick={() => toast.info("Purchasing is a future feature — prototype only")}>{LISTING[type].price} · Preview purchase</Button>}
+                  {reward !== "available" && <p className="rounded-md border border-gold/40 bg-gold/10 px-2 py-1 text-center text-xs text-gold">{reward === "claimed" ? "Claimed by battle winner" : "Awarded · Reserved for winner"} · out of draws &amp; purchases (demo)</p>}
+                  {reward === "available" && (type === "For Sale" || type === "Buy It or Win It") && <Button variant="outline" size="sm" className="w-full" onClick={() => toast.info("Purchasing is a future feature — prototype only")}>{LISTING[type].price} · Preview purchase</Button>}
                 </div>
               </Panel>
             );

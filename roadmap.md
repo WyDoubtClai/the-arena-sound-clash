@@ -14,3 +14,5 @@
 - [x] Discover upgrade: role/genre filters, search, creator cards, Crate beats, verified profile links
 # Artist Quick Battle formats
 - [x] Creation Battle + Song-for-Song, shared 3-min upload with early advance, exact 60s excerpt download, real local file judging, missing-entry exclusion.
+# Beat Vault reward
+- [x] Full-length giveaway reward for first-place Creation winners, Profile Beat Vault, Crate reservation, unique battle IDs, demo reset.
