@@ -14,4 +14,10 @@ describe("App routing", () => {
 
     expect(matches.at(-1)?.routeId).not.toBe(rootRouteId);
   });
+  it("keeps artist battles, Crate browsing and producer battles separate", () => {
+    const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
+    expect(router.matchRoutes("/artist-quick-battle").at(-1)?.routeId).toBe("/artist-quick-battle");
+    expect(router.matchRoutes("/crate").at(-1)?.routeId).toBe("/crate");
+    expect(router.matchRoutes("/gauntlet").at(-1)?.routeId).toBe("/gauntlet");
+  });
 });

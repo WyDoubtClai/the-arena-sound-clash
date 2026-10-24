@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ArtistQuickBattleRouteImport } from './routes/artist-quick-battle'
 import { Route as CompeteRouteImport } from './routes/compete'
 import { Route as CrateRouteImport } from './routes/crate'
 import { Route as DiscoverRouteImport } from './routes/discover'
@@ -22,6 +23,11 @@ import { Route as RankingsRouteImport } from './routes/rankings'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ArtistQuickBattleRoute = ArtistQuickBattleRouteImport.update({
+  id: '/artist-quick-battle',
+  path: '/artist-quick-battle',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CompeteRoute = CompeteRouteImport.update({
@@ -67,6 +73,7 @@ const RankingsRoute = RankingsRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/artist-quick-battle': typeof ArtistQuickBattleRoute
   '/compete': typeof CompeteRoute
   '/crate': typeof CrateRoute
   '/discover': typeof DiscoverRoute
@@ -78,6 +85,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/artist-quick-battle': typeof ArtistQuickBattleRoute
   '/compete': typeof CompeteRoute
   '/crate': typeof CrateRoute
   '/discover': typeof DiscoverRoute
@@ -90,6 +98,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/artist-quick-battle': typeof ArtistQuickBattleRoute
   '/compete': typeof CompeteRoute
   '/crate': typeof CrateRoute
   '/discover': typeof DiscoverRoute
@@ -103,6 +112,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/artist-quick-battle'
     | '/compete'
     | '/crate'
     | '/discover'
@@ -114,6 +124,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/artist-quick-battle'
     | '/compete'
     | '/crate'
     | '/discover'
@@ -125,6 +136,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/artist-quick-battle'
     | '/compete'
     | '/crate'
     | '/discover'
@@ -137,6 +149,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ArtistQuickBattleRoute: typeof ArtistQuickBattleRoute
   CompeteRoute: typeof CompeteRoute
   CrateRoute: typeof CrateRoute
   DiscoverRoute: typeof DiscoverRoute
@@ -154,6 +167,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/artist-quick-battle': {
+      id: '/artist-quick-battle'
+      path: '/artist-quick-battle'
+      fullPath: '/artist-quick-battle'
+      preLoaderRoute: typeof ArtistQuickBattleRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/compete': {
@@ -217,6 +237,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ArtistQuickBattleRoute: ArtistQuickBattleRoute,
   CompeteRoute: CompeteRoute,
   CrateRoute: CrateRoute,
   DiscoverRoute: DiscoverRoute,
