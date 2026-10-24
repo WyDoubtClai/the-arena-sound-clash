@@ -15,6 +15,7 @@ type PlayerState = {
   seek: (s: number) => void;
   setVolume: (v: number) => void;
   isCurrent: (id: string) => boolean;
+  requestAudioFocus: (pausePreview: () => void) => () => void;
 };
 
 const Ctx = createContext<PlayerState | null>(null);
@@ -22,6 +23,7 @@ const Ctx = createContext<PlayerState | null>(null);
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const audio = useRef<HTMLAudioElement | null>(null);
   const active = useRef<Track | null>(null);
+  const previewPause = useRef<(() => void) | null>(null);
   const [track, setTrack] = useState<Track | null>(null);
   const [playing, setPlaying] = useState(false);
   const [time, setTime] = useState(0);
@@ -47,12 +49,22 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     };
     a.onended = () => setPlaying(false);
     audio.current = a;
-    return () => a.pause();
+    return () => { a.pause(); previewPause.current?.(); previewPause.current = null; };
+  }, []);
+
+  const requestAudioFocus = useCallback((pausePreview: () => void) => {
+    previewPause.current?.();
+    audio.current?.pause();
+    previewPause.current = pausePreview;
+    return () => {
+      if (previewPause.current === pausePreview) previewPause.current = null;
+    };
   }, []);
 
   const play = useCallback((t: Track) => {
     const a = audio.current;
     if (!a) return;
+    previewPause.current?.();
     if (track?.id !== t.id) {
       active.current = t;
       a.src = beatUrl(t.seed, t.seconds ?? 30);
@@ -65,11 +77,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }, [track]);
 
   const value: PlayerState = {
-    track, playing, time, duration, volume, play,
+    track, playing, time, duration, volume, play, requestAudioFocus,
     toggle: () => {
       const a = audio.current;
       if (!a || !track) return;
       if (a.paused) {
+        previewPause.current?.();
         if (track.segmentDuration && a.currentTime >= (track.segmentStart ?? 0) + track.segmentDuration) a.currentTime = track.segmentStart ?? 0;
         void a.play().catch(() => setPlaying(false));
       } else a.pause();
