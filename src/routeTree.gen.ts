@@ -11,8 +11,13 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CompeteRouteImport } from './routes/compete'
+import { Route as CrateRouteImport } from './routes/crate'
+import { Route as DiscoverRouteImport } from './routes/discover'
+import { Route as EventsRouteImport } from './routes/events'
 import { Route as GauntletRouteImport } from './routes/gauntlet'
 import { Route as LobbyRouteImport } from './routes/lobby'
+import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as RankingsRouteImport } from './routes/rankings'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -22,6 +27,21 @@ const IndexRoute = IndexRouteImport.update({
 const CompeteRoute = CompeteRouteImport.update({
   id: '/compete',
   path: '/compete',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CrateRoute = CrateRouteImport.update({
+  id: '/crate',
+  path: '/crate',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DiscoverRoute = DiscoverRouteImport.update({
+  id: '/discover',
+  path: '/discover',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EventsRoute = EventsRouteImport.update({
+  id: '/events',
+  path: '/events',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GauntletRoute = GauntletRouteImport.update({
@@ -34,39 +54,97 @@ const LobbyRoute = LobbyRouteImport.update({
   path: '/lobby',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RankingsRoute = RankingsRouteImport.update({
+  id: '/rankings',
+  path: '/rankings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/compete': typeof CompeteRoute
+  '/crate': typeof CrateRoute
+  '/discover': typeof DiscoverRoute
+  '/events': typeof EventsRoute
   '/gauntlet': typeof GauntletRoute
   '/lobby': typeof LobbyRoute
+  '/profile': typeof ProfileRoute
+  '/rankings': typeof RankingsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/compete': typeof CompeteRoute
+  '/crate': typeof CrateRoute
+  '/discover': typeof DiscoverRoute
+  '/events': typeof EventsRoute
   '/gauntlet': typeof GauntletRoute
   '/lobby': typeof LobbyRoute
+  '/profile': typeof ProfileRoute
+  '/rankings': typeof RankingsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/compete': typeof CompeteRoute
+  '/crate': typeof CrateRoute
+  '/discover': typeof DiscoverRoute
+  '/events': typeof EventsRoute
   '/gauntlet': typeof GauntletRoute
   '/lobby': typeof LobbyRoute
+  '/profile': typeof ProfileRoute
+  '/rankings': typeof RankingsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/compete' | '/gauntlet' | '/lobby'
+  fullPaths:
+    | '/'
+    | '/compete'
+    | '/crate'
+    | '/discover'
+    | '/events'
+    | '/gauntlet'
+    | '/lobby'
+    | '/profile'
+    | '/rankings'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/compete' | '/gauntlet' | '/lobby'
-  id: '__root__' | '/' | '/compete' | '/gauntlet' | '/lobby'
+  to:
+    | '/'
+    | '/compete'
+    | '/crate'
+    | '/discover'
+    | '/events'
+    | '/gauntlet'
+    | '/lobby'
+    | '/profile'
+    | '/rankings'
+  id:
+    | '__root__'
+    | '/'
+    | '/compete'
+    | '/crate'
+    | '/discover'
+    | '/events'
+    | '/gauntlet'
+    | '/lobby'
+    | '/profile'
+    | '/rankings'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CompeteRoute: typeof CompeteRoute
+  CrateRoute: typeof CrateRoute
+  DiscoverRoute: typeof DiscoverRoute
+  EventsRoute: typeof EventsRoute
   GauntletRoute: typeof GauntletRoute
   LobbyRoute: typeof LobbyRoute
+  ProfileRoute: typeof ProfileRoute
+  RankingsRoute: typeof RankingsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -85,6 +163,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CompeteRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/crate': {
+      id: '/crate'
+      path: '/crate'
+      fullPath: '/crate'
+      preLoaderRoute: typeof CrateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/discover': {
+      id: '/discover'
+      path: '/discover'
+      fullPath: '/discover'
+      preLoaderRoute: typeof DiscoverRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/events': {
+      id: '/events'
+      path: '/events'
+      fullPath: '/events'
+      preLoaderRoute: typeof EventsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/gauntlet': {
       id: '/gauntlet'
       path: '/gauntlet'
@@ -99,14 +198,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LobbyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rankings': {
+      id: '/rankings'
+      path: '/rankings'
+      fullPath: '/rankings'
+      preLoaderRoute: typeof RankingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CompeteRoute: CompeteRoute,
+  CrateRoute: CrateRoute,
+  DiscoverRoute: DiscoverRoute,
+  EventsRoute: EventsRoute,
   GauntletRoute: GauntletRoute,
   LobbyRoute: LobbyRoute,
+  ProfileRoute: ProfileRoute,
+  RankingsRoute: RankingsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
