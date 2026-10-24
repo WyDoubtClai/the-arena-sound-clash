@@ -8,6 +8,8 @@ import { Avatar, Panel, PageHeader, Pills } from "@/components/arena/bits";
 export const Route = createFileRoute("/rankings")({
   head: () => ({
     meta: [
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       { title: "Rankings — Leaderboards | The Arena" },
       { name: "description", content: "Leaderboards for artists, producers and judges by XP and community reputation." },
       { property: "og:title", content: "Rankings — Leaderboards" },
