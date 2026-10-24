@@ -8,7 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { ARTIST_ROSTER, BALLOT_SEED, DEMO_SPEED, FORMAT_LABEL, PERFORMANCE_LIMIT, PROMPT, UPLOAD_WINDOW, ballotLabel, canRate, closeBallot, drawBeats, rankEntries, seconds, segmentBounds, shouldCloseUpload, stagesFor, submittedIds, uploadSchedule, uploadStatus, validateAudioFile, type BattleFormat } from "@/lib/artist-battle";
 import { excerptWav } from "@/lib/synth";
-import { byId, me } from "@/lib/data";
+import { beats, byId, me } from "@/lib/data";
+import { Link } from "@tanstack/react-router";
+import { downloadRewardFile, newBattleId, qualifiesForReward, rewardId, reservedBeatIds, useVault } from "@/lib/beat-vault";
+
+const BATTLE_KEY = "arena-aqb-battle-id";
 import { fmt, usePlayer, type Track } from "@/lib/player";
 import { cn } from "@/lib/utils";
 
@@ -66,7 +70,17 @@ function ArtistQuickBattle() {
   const played = useRef(false);
   const lastStage = useRef(0);
   const closedStage = useRef<number | null>(null);
-  const choices = useMemo(() => drawBeats(), []);
+  const vault = useVault();
+  const [battleId, setBattleId] = useState("");
+  useEffect(() => {
+    const saved = sessionStorage.getItem(BATTLE_KEY);
+    const id = saved ?? newBattleId();
+    if (!saved) sessionStorage.setItem(BATTLE_KEY, id);
+    setBattleId(id);
+  }, []);
+  const reservedKey = [...reservedBeatIds(vault.list)].sort().join(",");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const choices = useMemo(() => drawBeats(beats.filter((b) => !reservedBeatIds(vault.list).has(b.id))), [reservedKey]);
   const schedule = useMemo(() => uploadSchedule(oneMisses), [oneMisses]);
   const winner = ballot?.winner;
   const winnerVotes = ballot?.counts.find((row) => row.beat.id === winner?.id)?.count ?? 0;
@@ -107,6 +121,7 @@ function ArtistQuickBattle() {
   }
   function restart(nextFormat = format) {
     player.pause();
+    const fresh = newBattleId(); sessionStorage.setItem(BATTLE_KEY, fresh); setBattleId(fresh);
     if (mine?.url) URL.revokeObjectURL(mine.url);
     setStage(0); setLeft(0); setReady([]); setVote(null); setBallot(null); setLyrics(""); setMine(null); setFileError(null); setEntries([]); setClosedWith(null); setIndex(0); setRatings({}); setReactions([]);
     setChat(welcome()); setMessage(""); played.current = false; closedStage.current = null;
