@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cleanBody, commentCount, emptyLobby, readLobby, sampleComments, selectPosts, STORAGE_KEY, toggleId, topicFilter, type Comment, type LobbyPost, type LobbyState } from "@/lib/lobby-demo";
 import { trendingTopics } from "@/lib/data";
+import { profileIds } from "@/lib/profile-demo";
 
 export const Route = createFileRoute("/lobby")({
   head: () => ({ meta: [
@@ -25,8 +26,7 @@ const field = "w-full min-w-0 rounded-lg border bg-background p-3 text-sm outlin
 
 function AuthorName({ id }: { id: string }) {
   const p = byId(id);
-  // The profile page currently opens Blaze only; other creators must not link to it.
-  return id === me.id ? <Link to="/profile" className="font-semibold hover:text-violet">{p.name}</Link> : <span className="font-semibold" title="Profile destination unavailable in this demo">{p.name}</span>;
+  return profileIds.some((profile) => profile === id) ? <a href={`/profile?profile=${encodeURIComponent(id)}`} className="font-semibold hover:text-violet">{p.name}</a> : <span className="font-semibold" title="Profile destination unavailable in this demo">{p.name}</span>;
 }
 function Lobby() {
   const [state, setState] = useState<LobbyState>(emptyLobby);
