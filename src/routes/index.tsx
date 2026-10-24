@@ -86,8 +86,8 @@ function Home() {
       {/* Battle modes */}
       <Section title="Three Ways to Battle" action={<Link to="/compete" className="text-xs text-violet">All formats</Link>}>
         <div className="grid gap-4 md:grid-cols-3">
-          {modes.map((m, i) => (
-            <Link key={m.title} to={m.to} className={`group relative flex flex-col gap-4 overflow-hidden rounded-2xl border bg-surface p-6 transition hover:-translate-y-1 hover:border-${m.color} ${i === 0 ? "md:row-span-1" : ""}`}>
+          {modes.map((m) => (
+            <Link key={m.title} to={m.to} className={`group relative flex flex-col gap-4 overflow-hidden rounded-2xl border bg-surface p-6 transition hover:-translate-y-1 hover:border-violet`}>
               <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full blur-2xl opacity-40 transition group-hover:opacity-70" style={{ background: `var(--${m.color})` }} />
               <div className="grid h-12 w-12 place-items-center rounded-xl" style={{ background: `color-mix(in oklab, var(--${m.color}) 18%, transparent)`, color: `var(--${m.color})` }}><m.icon className="h-6 w-6" /></div>
               <h3 className="font-display text-xl font-bold">{m.title}</h3>

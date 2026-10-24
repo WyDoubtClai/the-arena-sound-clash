@@ -3,4 +3,4 @@
 - [x] Build seven-stage artist demo using shared beats and reusable battle controls.
 - [x] Preserve producer flow; verify both demos, audio, upload preview and navigation.
 # Homepage upgrade
-- [ ] Cinematic hero, three battle modes, featured Crate (eligibility noted), rankings (XP vs rep), community; demo data labeled.
+- [x] Cinematic hero, three battle modes, featured Crate (eligibility noted), rankings (XP vs rep), community; demo data labeled.
