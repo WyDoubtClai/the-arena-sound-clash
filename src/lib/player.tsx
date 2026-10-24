@@ -36,7 +36,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     a.ontimeupdate = () => {
       const t = active.current;
       const elapsed = a.currentTime - (t?.segmentStart ?? 0);
-      setTime(Math.max(0, Math.min(elapsed, t?.segmentDuration ?? a.duration)));
+      const limit = t?.segmentDuration ?? (Number.isFinite(a.duration) ? a.duration : (t?.seconds ?? 30));
+      setTime(Math.max(0, Math.min(elapsed, limit)));
       if (t?.segmentDuration && elapsed >= t.segmentDuration) a.pause();
     };
     a.onloadedmetadata = () => {
