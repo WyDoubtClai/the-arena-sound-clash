@@ -29,7 +29,7 @@ const emoji = ["🔥", "💯", "👏", "🎧", "🙌"];
 const demoChat = ["That hook hits 🔥", "Same beat, totally different story", "Love this take", "Great delivery 👏"];
 const XP = [500, 350, 250, 150, 100, 75, 50, 50];
 const welcome = () => [{ who: "judgeraye", text: "Welcome to Artist Quick Battle #2042", simulated: true }];
-type MyEntry = { name: string; url: string; seconds: number };
+type MyEntry = { name: string; url: string; seconds: number; demo?: boolean };
 
 function audioLength(url: string) {
   return new Promise<number | undefined>((resolve) => {
@@ -72,13 +72,14 @@ function ArtistQuickBattle() {
   const winnerVotes = ballot?.counts.find((row) => row.beat.id === winner?.id)?.count ?? 0;
   const isUpload = name === "3-Minute Upload";
   const elapsed = UPLOAD_WINDOW - left;
-  const submitted = isUpload ? submittedIds(schedule, elapsed, !!mine) : entries;
+  const submitted = isUpload ? submittedIds(schedule, elapsed, !!mine || (demo && left <= 0)) : entries;
   const results = rankEntries(ratings, entries);
   const missing = ARTIST_ROSTER.filter((id) => !entries.includes(id));
   const currentId = entries[index];
   const rosterIndex = ARTIST_ROSTER.indexOf(currentId);
-  const submission: Track | null = !currentId ? null : currentId === me.id && mine
+  const submission: Track | null = !currentId ? null : currentId === me.id && mine && !mine.demo
     ? { id: `artist-entry-mine-${mine.name}`, title: `Your Entry · ${mine.name}`, artist: "You (local file)", seed: 300, seconds: mine.seconds, src: mine.url }
+    : currentId === me.id ? { id: "artist-entry-mine-demo", title: "Blaze — Demo Entry (simulated audio)", artist: "You · demo submission", seed: 300, seconds: PERFORMANCE_LIMIT }
     : { id: `artist-entry-${rosterIndex}`, title: `${byId(currentId).name}'s ${format === "song" ? "Song" : "Entry"} (simulated)`, artist: byId(currentId).name, seed: 300 + rosterIndex, seconds: PERFORMANCE_LIMIT };
   const [segStart, segEnd] = winner ? segmentBounds(winner) : [0, 0];
   const beatTrack: Track | null = winner ? { id: `artist-segment-${winner.id}`, title: `${winner.title} · 60s segment`, artist: byId(winner.producer).name, seed: winner.seed, seconds: seconds(winner.duration), segmentStart: segStart, segmentDuration: PERFORMANCE_LIMIT } : null;
@@ -87,7 +88,7 @@ function ArtistQuickBattle() {
   function go(next: number) { setLeft(timed(stages[next])); setStage(next); }
   function advance() {
     player.pause();
-    if (name === "Crate Draw") { if (!vote) return; setBallot(closeBallot(choices, vote)); }
+    if (name === "Crate Draw") { setBallot(closeBallot(choices, vote)); go(stage + 2); return; } // reveal resolves instantly; 15:00 starts now
     if (isUpload) { setLeft(0); return; } // Skip = expire the window; the single close effect handles it.
     go(Math.min(stages.length - 1, stage + 1));
   }
@@ -106,13 +107,13 @@ function ArtistQuickBattle() {
   }
   function restart(nextFormat = format) {
     player.pause();
-    if (mine) URL.revokeObjectURL(mine.url);
+    if (mine?.url) URL.revokeObjectURL(mine.url);
     setStage(0); setLeft(0); setReady([]); setVote(null); setBallot(null); setLyrics(""); setMine(null); setFileError(null); setEntries([]); setClosedWith(null); setIndex(0); setRatings({}); setReactions([]);
     setChat(welcome()); setMessage(""); played.current = false; closedStage.current = null;
     if (nextFormat !== format) void navigate({ search: nextFormat === "song" ? { format: "song" } : {} });
   }
   async function chooseFile(file: File | undefined) {
-    if (!file || !isUpload || mine) return;
+    if (!file || !isUpload || (mine && !mine.demo)) return;
     const typeError = validateAudioFile(file, format);
     if (typeError) { setFileError(typeError); return; }
     const url = URL.createObjectURL(file);
@@ -157,7 +158,7 @@ function ArtistQuickBattle() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [name, left, demo]);
   useEffect(() => {
-    if (isUpload || left !== 0 || !timed(name) || (name === "Crate Draw" && !vote)) return;
+    if (isUpload || left !== 0 || !timed(name) || false) return;
     advance();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [left, stage, vote]);
@@ -245,9 +246,10 @@ function ArtistQuickBattle() {
       {format === "creation" && winner && <p className="text-sm text-muted-foreground">{winner.title} · {byId(winner.producer).name} · {winner.segment} · {PROMPT}</p>}
       <div className="flex flex-wrap items-end justify-between gap-4"><BattleCountdown label="Upload window closes in" left={left} urgent /><div className="min-w-[200px] flex-1"><p className="flex justify-between text-sm"><span>{format === "song" ? "Songs submitted" : "Performances submitted"}</span><strong aria-live="polite">{submitted.length} of 8 Submitted</strong></p><div className="mt-2 h-2 overflow-hidden rounded-full bg-surface"><div className="h-full bg-violet transition-all" style={{ width: `${(submitted.length / 8) * 100}%` }} /></div></div></div>
       <p className="text-xs text-muted-foreground">Everyone shares the same 3:00 window. When all eight valid entries are in, the room moves straight to Listen & Judge; if time runs out, missing entries are excluded.</p>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{ARTIST_ROSTER.map((id) => { const status = id === me.id ? (mine ? "Submitted" : checking ? "Uploading" : "Waiting") : uploadStatus(schedule[id], elapsed, false); return <div key={id} className={cn("flex items-center gap-2 rounded-lg border p-2", status === "Submitted" && "border-teal/60")}><Avatar id={id} size={28} /><div className="min-w-0"><p className="truncate text-xs font-semibold">{id === me.id ? "You" : byId(id).name}</p><p className={cn("text-[11px]", status === "Submitted" ? "text-teal" : status === "Uploading" ? "text-gold" : "text-muted-foreground")}>{status}</p></div></div>; })}</div>
-      {mine ? <Panel className="flex items-center gap-3 border-teal/60"><CheckCircle2 className="h-6 w-6 shrink-0 text-teal" /><div className="min-w-0"><p className="font-semibold">Submitted: <span className="break-all">{mine.name}</span></p><p className="text-xs text-muted-foreground">{fmt(mine.seconds)} · kept on this device · waiting for the other artists</p></div></Panel>
-        : <label onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); void chooseFile(e.dataTransfer.files[0]); }} className="flex cursor-pointer flex-col items-center gap-3 rounded-lg border-2 border-dashed p-8 text-center"><Upload className="h-8 w-8 text-violet" /><span>{checking ? "Checking file…" : format === "song" ? "Choose or drop your finished song" : "Choose or drop your performance"}</span><span className="text-xs text-muted-foreground">WAV / MP3 / M4A / AAC / OGG / FLAC{format === "creation" ? " · 60 seconds maximum" : " · full-length songs allowed"}</span><input aria-label={format === "song" ? "Song file" : "Artist performance"} className="sr-only" type="file" accept="audio/*,.wav,.mp3,.m4a,.aac,.ogg,.flac" onChange={(e) => { void chooseFile(e.target.files?.[0]); e.target.value = ""; }} /></label>}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{ARTIST_ROSTER.map((id) => { const status = id === me.id ? (mine ? (mine.demo ? "Submitted (demo)" : "Submitted") : checking ? "Uploading" : "Waiting") : uploadStatus(schedule[id], elapsed, false); return <div key={id} className={cn("flex items-center gap-2 rounded-lg border p-2", status.startsWith("Submitted") && "border-teal/60")}><Avatar id={id} size={28} /><div className="min-w-0"><p className="truncate text-xs font-semibold">{id === me.id ? "You" : byId(id).name}</p><p className={cn("text-[11px]", status.startsWith("Submitted") ? "text-teal" : status === "Uploading" ? "text-gold" : "text-muted-foreground")}>{status}</p></div></div>; })}</div>
+      {mine && <Panel className="flex items-center gap-3 border-teal/60"><CheckCircle2 className="h-6 w-6 shrink-0 text-teal" /><div className="min-w-0"><p className="font-semibold">Submitted: <span className="break-all">{mine.demo ? "Blaze — Demo Entry" : mine.name}</span>{mine.demo && <span className="ml-2 rounded-full bg-gold/15 px-2 py-0.5 text-[10px] text-gold">DEMO</span>}</p><p className="text-xs text-muted-foreground">{mine.demo ? "Simulated audio · no actual file uploaded · replace it with a real file until the window closes" : `${fmt(mine.seconds)} · kept on this device · waiting for the other artists`}</p></div></Panel>}
+      {demo && !mine && <div className="flex flex-wrap items-center gap-3"><Button variant="outline" onClick={() => setMine({ name: "Demo Entry", url: "", seconds: PERFORMANCE_LIMIT, demo: true })}>Use Demo Submission</Button><span className="text-xs text-muted-foreground">Demo Mode: with no file uploaded, a labeled simulated entry is used for you when the window closes.</span></div>}
+      {(!mine || mine.demo) && <label onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); void chooseFile(e.dataTransfer.files[0]); }} className="flex cursor-pointer flex-col items-center gap-3 rounded-lg border-2 border-dashed p-8 text-center"><Upload className="h-8 w-8 text-violet" /><span>{checking ? "Checking file…" : format === "song" ? "Choose or drop your finished song" : "Choose or drop your performance"}</span><span className="text-xs text-muted-foreground">WAV / MP3 / M4A / AAC / OGG / FLAC{format === "creation" ? " · 60 seconds maximum" : " · full-length songs allowed"}</span><input aria-label={format === "song" ? "Song file" : "Artist performance"} className="sr-only" type="file" accept="audio/*,.wav,.mp3,.m4a,.aac,.ogg,.flac" onChange={(e) => { void chooseFile(e.target.files?.[0]); e.target.value = ""; }} /></label>}
       {fileError && <p role="alert" className="text-sm text-coral">{fileError}</p>}
     </section>}
 
