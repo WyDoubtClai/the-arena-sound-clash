@@ -107,7 +107,7 @@ function Discover() {
         )}
       </Section>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid min-w-0 gap-6 lg:grid-cols-2 [&>*]:min-w-0">
         <Section title="Popular Tracks" action={<span className="rounded bg-secondary px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">Demo plays</span>}>
           {trackList.length === 0 ? <Empty text={g !== "All" ? "Tracks have no genre data yet." : "No tracks match."} /> : (
             <Panel className="space-y-1">
@@ -116,7 +116,7 @@ function Discover() {
                 return (
                   <div key={t.id} className="flex items-center gap-3 rounded-lg p-1.5 hover:bg-secondary/50">
                     <span className="w-4 text-sm text-muted-foreground">{i + 1}</span>
-                    <div aria-hidden className="h-10 w-10 shrink-0 rounded-md" style={{ background: `radial-gradient(circle at 30% 30%, hsl(${a?.hue ?? 270} 80% 65%), hsl(${(a?.hue ?? 270) + 60} 60% 20%))` }} />
+                    <div aria-hidden className="hidden h-10 w-10 shrink-0 rounded-md sm:block" style={{ background: `radial-gradient(circle at 30% 30%, hsl(${a?.hue ?? 270} 80% 65%), hsl(${(a?.hue ?? 270) + 60} 60% 20%))` }} />
                     <PlayButton size="sm" track={t} />
                     <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{t.title}</p><p className="truncate text-xs text-muted-foreground">{a ? <CreatorName p={a} /> : t.artist}</p></div>
                     <span className="hidden items-center gap-1 text-xs text-muted-foreground sm:flex"><Play className="h-3 w-3" />{t.plays}</span>
@@ -135,7 +135,7 @@ function Discover() {
                 const p = people.find((x) => x.id === b.producer)!;
                 return (
                   <div key={b.id} className="flex items-center gap-3 rounded-lg p-1.5 hover:bg-secondary/50">
-                    <div aria-hidden className="h-10 w-10 shrink-0 rounded-md" style={{ background: `radial-gradient(circle at 70% 30%, hsl(${p.hue} 80% 60%), hsl(${p.hue + 40} 60% 18%))` }} />
+                    <div aria-hidden className="hidden h-10 w-10 shrink-0 rounded-md sm:block" style={{ background: `radial-gradient(circle at 70% 30%, hsl(${p.hue} 80% 60%), hsl(${p.hue + 40} 60% 18%))` }} />
                     <PlayButton size="sm" track={{ id: b.id, title: b.title, artist: p.name, seed: b.seed, genre: b.genre }} />
                     <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{b.title}</p><p className="truncate text-xs text-muted-foreground"><CreatorName p={p} /> · {b.genre} · {b.bpm} BPM</p></div>
                     <span className="text-xs tabular-nums text-muted-foreground">{b.duration}</span>
