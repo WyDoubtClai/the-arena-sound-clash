@@ -5,5 +5,5 @@
 # Homepage upgrade
 - [x] Cinematic hero, three battle modes, featured Crate (eligibility noted), rankings (XP vs rep), community; demo data labeled.
 # Focused profile upgrade
-- [ ] Preserve profile presentation and playback; add role-specific demo records, match history, achievements and visitor controls.
-- [ ] Validate profile switching, tabs, playback, navigation and desktop/mobile layouts.
+- [x] Preserve profile presentation and playback; add role-specific demo records, match history, achievements and visitor controls.
+- [x] Validate profile switching, tabs, playback, navigation and desktop/mobile layouts.
