@@ -6,6 +6,8 @@ import { Avatar, Panel, PageHeader, Section } from "@/components/arena/bits";
 export const Route = createFileRoute("/compete")({
   head: () => ({
     meta: [
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       { title: "Compete — The Arena" },
       { name: "description", content: "Producer and Artist Quick Battles, custom battle rooms and Song-for-Song battles." },
       { property: "og:title", content: "Compete — The Arena" },

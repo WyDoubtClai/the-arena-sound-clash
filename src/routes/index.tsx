@@ -8,6 +8,8 @@ import { Avatar, Panel, PlayButton, RoleBadge, Section } from "@/components/aren
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       { title: "Home — The Arena" },
       { name: "description", content: "Live Gauntlets, upcoming song battles, trending Lobby talk and rising Crate beats." },
       { property: "og:title", content: "Home — The Arena" },

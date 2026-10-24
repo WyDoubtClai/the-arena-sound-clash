@@ -8,6 +8,8 @@ import { Avatar, Panel, PageHeader, Pills, PlayButton, RoleBadge, Section } from
 export const Route = createFileRoute("/discover")({
   head: () => ({
     meta: [
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       { title: "Discover — The Arena" },
       { name: "description", content: "Trending tracks, rising producers and new artists across every genre." },
       { property: "og:title", content: "Discover — The Arena" },

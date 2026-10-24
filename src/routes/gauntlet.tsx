@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Check, Download, FastForward, Pause, Play, RotateCcw, Send, Star, Trophy, Upload } from "lucide-react";
+import { Check, Download, FastForward, Pause, Play, RotateCcw, Send, Trophy, Upload } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -13,6 +13,8 @@ import { BattleParticipants, BattleCountdown, BattleRating } from "@/components/
 export const Route = createFileRoute("/gauntlet")({
   head: () => ({
     meta: [
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       { title: "The Gauntlet — Live Producer Quick Battle | The Arena" },
       { name: "description", content: "8 producers, one sample kit, 15 minutes. Create, upload, listen together and judge live." },
       { property: "og:title", content: "The Gauntlet — Live Producer Quick Battle" },

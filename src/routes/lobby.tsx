@@ -9,6 +9,8 @@ import { AudioEmbed, Avatar, Panel, PageHeader, Pills, RoleBadge } from "@/compo
 export const Route = createFileRoute("/lobby")({
   head: () => ({
     meta: [
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       { title: "The Lobby — The Arena" },
       { name: "description", content: "Music community feed: discussions, questions, collabs, battle talk and feedback." },
       { property: "og:title", content: "The Lobby — The Arena" },

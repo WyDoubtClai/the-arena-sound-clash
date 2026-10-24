@@ -10,6 +10,8 @@ import hero from "@/assets/hero-battle.jpg";
 export const Route = createFileRoute("/events")({
   head: () => ({
     meta: [
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       { title: "Events — Scheduled Battles | The Arena" },
       { name: "description", content: "Upcoming song battles, beat battles, cyphers and tournaments with live countdowns." },
       { property: "og:title", content: "Events — Scheduled Battles" },

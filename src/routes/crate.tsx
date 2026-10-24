@@ -12,10 +12,12 @@ import { Slider } from "@/components/ui/slider";
 export const Route = createFileRoute("/crate")({
   head: () => ({
     meta: [
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       { title: "The Crate — Instrumental Library | The Arena" },
-      { name: "description", content: "Browse battle-ready beats, upload instrumentals and try the Crate Draw." },
+      { name: "description", content: "Browse producer instrumentals, preview beats and explore the frontend upload demonstration." },
       { property: "og:title", content: "The Crate — Instrumental Library" },
-      { property: "og:description", content: "Browse battle-ready beats, upload instrumentals and try the Crate Draw." },
+      { property: "og:description", content: "Browse producer instrumentals, preview beats and explore the frontend upload demonstration." },
     ],
   }),
   component: Crate,
@@ -66,9 +68,9 @@ function UploadModal({ open, onOpenChange }: { open: boolean; onOpenChange: (o: 
   const [start, setStart] = useState([40]);
   const [file, setFile] = useState<string | null>(null);
   const allowance = [
-    { l: "Last 24 hours", used: 1, max: UPLOAD_LIMITS[0] },
+    { l: "Rolling 24 hours", used: 1, max: UPLOAD_LIMITS[0] },
     { l: "Last 7 days", used: 6, max: UPLOAD_LIMITS[1] },
-    { l: "Active beats", used: 22, max: UPLOAD_LIMITS[0]0 },
+    { l: "Active beats", used: 22, max: UPLOAD_LIMITS[2] },
   ];
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
