@@ -209,7 +209,7 @@ function ArtistQuickBattle() {
       <div><p className="text-xs font-semibold tracking-widest text-coral">PHASE 1 DEMO · ROOM #2042</p><h1 className="text-3xl font-bold md:text-4xl">Artist Quick Battle</h1><p className="text-sm text-violet">{FORMAT_LABEL[format]}</p></div>
       <div className="flex flex-wrap items-center gap-2">
         <label className="flex items-center gap-2 rounded-full border bg-surface px-3 py-1.5 text-sm"><Switch checked={demo} onCheckedChange={setDemo} aria-label="Demo mode" />Demo Mode {demo && <span className="text-xs text-gold">30×</span>}</label>
-        {stage < stages.length - 1 && <Button disabled={name === "Crate Draw" && !vote} onClick={() => name === "Listen & Judge" ? nextEntry() : advance()}><FastForward />Skip</Button>}
+        {stage < stages.length - 1 && <Button onClick={() => name === "Listen & Judge" ? nextEntry() : advance()}><FastForward />Skip</Button>}
         <Button variant="outline" size="icon" title="Restart demo" aria-label="Restart" onClick={() => restart()}><RotateCcw /></Button>
       </div>
     </div>
@@ -228,20 +228,13 @@ function ArtistQuickBattle() {
       <p className="text-sm text-muted-foreground">Four eligible instrumentals from The Crate · anonymous 30-second previews · one vote per artist.</p>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{choices.map((beat, i) => <Panel key={beat.id} className={cn("space-y-3", vote === beat.id && "border-violet")}><AudioEmbed track={{ id: `blind-${beat.id}`, title: `Instrumental ${String.fromCharCode(65 + i)}`, artist: "Anonymous Crate preview", seed: beat.seed }} /><Button className="w-full" variant={vote === beat.id ? "default" : "outline"} aria-pressed={vote === beat.id} onClick={() => setVote(beat.id)}><Vote />{vote === beat.id ? "Your vote" : `Vote ${String.fromCharCode(65 + i)}`}</Button></Panel>)}</div>
       <p className="text-xs text-muted-foreground">Simulated ballots: Nova Rae → A, Lyric K → B, Mia Soul → B, Lexi Vibes → C, Verse → C, Amira → D, Juno → A. Your vote is the eighth ballot. Ties use a seeded random draw among tied choices (room seed {BALLOT_SEED}); restarting this room repeats the same draw.</p>
-      {!vote && left === 0 && <p className="text-sm text-coral">Cast your vote to close the ballot.</p>}
+      <p className="text-xs text-muted-foreground">If time runs out before you vote, the ballot closes with the seven votes cast and the same tie rule.</p>
       <Button disabled={!vote} onClick={advance}>Close Ballot</Button>
     </section>}
 
-    {name === "Beat & Prompt Reveal" && ballot && winner && <section className="space-y-4">
-      <h2 className="text-xl font-bold">Beat & Prompt Reveal</h2>
-      <div className="grid gap-3 sm:grid-cols-4">{ballot.counts.map((row, i) => <Panel key={row.beat.id} className={cn("space-y-1", row.beat.id === winner.id && "border-gold")}><p className="text-sm">Instrumental {String.fromCharCode(65 + i)}</p><p className="text-2xl font-bold text-gold">{row.count} votes</p><p className="text-xs text-muted-foreground">{ballot.simulated.filter((v) => v.beatId === row.beat.id).length} simulated{vote === row.beat.id ? " + your vote" : ""}</p></Panel>)}</div>
-      <p className="text-sm text-muted-foreground">{ballot.total}/8 ballots counted.{ballot.tied ? ` Tie resolved by the seeded random tiebreaker (${BALLOT_SEED}).` : ` ${ballotLabel(winnerVotes, ballot.total)}.`}</p>
-      {beatCard}
-      <p className="text-sm">All eight artists receive this same instrumental and prompt simultaneously. Creation starts only when the reveal ends.</p>
-      <Button onClick={advance}>Begin 15-Minute Creation</Button>
-    </section>}
-
-    {name === "15-Minute Creation" && <section className="space-y-4">
+    {name === "15-Minute Creation" && ballot && winner && <section className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-4">{ballot.counts.map((row, i) => <Panel key={row.beat.id} className={cn("space-y-1 p-3", row.beat.id === winner.id && "border-gold")}><p className="text-xs">Instrumental {String.fromCharCode(65 + i)}</p><p className="text-lg font-bold text-gold">{row.count} votes</p><p className="text-[11px] text-muted-foreground">{ballot.simulated.filter((v) => v.beatId === row.beat.id).length} simulated{vote === row.beat.id ? " + your vote" : ""}</p></Panel>)}</div>
+      <p className="text-xs text-muted-foreground">{ballot.total}/8 ballots counted{vote ? "" : " (you didn't vote before the ballot closed)"}.{ballot.tied ? ` Tie resolved by the seeded random tiebreaker (${BALLOT_SEED}).` : ` ${ballotLabel(winnerVotes, ballot.total)}.`} Creation started automatically for all eight artists.</p>
       {beatCard}
       <div className="text-center"><BattleCountdown label="Time remaining" left={left} urgent /><div className="mt-2 h-2 overflow-hidden rounded-full bg-surface"><div className="h-full bg-violet transition-all" style={{ width: `${(left / 900) * 100}%` }} /></div><p className="mt-2 text-sm text-muted-foreground">Create your 60-second performance before the timer expires.</p></div>
       <label className="block space-y-2"><span className="text-sm text-muted-foreground">Your writing draft</span><textarea value={lyrics} onChange={(e) => setLyrics(e.target.value)} aria-label="Writing draft" rows={5} className="w-full rounded-lg border bg-surface p-3 text-sm outline-none focus:border-violet" /></label>
