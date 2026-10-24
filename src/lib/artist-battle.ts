@@ -50,3 +50,40 @@ export function rankArtists(ratings: Record<number, number>) {
     return { id, avg: scores.reduce((sum, score) => sum + score, 0) / scores.length };
   }).sort((a, b) => b.avg - a.avg);
 }
+// ---- Formats, shared 3-minute upload window, exclusions ----
+export type BattleFormat = "creation" | "song";
+export const FORMAT_LABEL: Record<BattleFormat, string> = { creation: "15-Minute Creation Battle", song: "Song-for-Song Quick Battle" };
+export const SONG_STAGES = ["Waiting Room", "3-Minute Upload", "Listen & Judge", "Results"];
+export const stagesFor = (format: BattleFormat) => (format === "creation" ? ARTIST_STAGES : SONG_STAGES);
+export const UPLOAD_WINDOW = 180;
+export const ballotLabel = (count: number, total: number) => (count > total / 2 ? "Majority winner" : "Plurality winner");
+
+/** Seconds into the upload window when each simulated artist finishes; null = never submits. */
+export function uploadSchedule(oneMisses: boolean): Record<string, number | null> {
+  const times = [14, 26, 37, 48, 62, 81, 104];
+  return Object.fromEntries(ARTIST_ROSTER.slice(1).map((id, i) => [id, oneMisses && i === 6 ? null : times[i]]));
+}
+export type UploadStatus = "Waiting" | "Uploading" | "Submitted" | "Missed Deadline";
+export function uploadStatus(at: number | null | undefined, elapsed: number, closed: boolean): UploadStatus {
+  if (at != null && elapsed >= at) return "Submitted";
+  if (closed) return "Missed Deadline";
+  return at != null && elapsed >= at - 10 ? "Uploading" : "Waiting";
+}
+/** Valid submitters at a moment in the window, in roster order. The local user counts only after a validated file. */
+export function submittedIds(schedule: Record<string, number | null>, elapsed: number, userSubmitted: boolean) {
+  return ARTIST_ROSTER.filter((id, i) => (i === 0 ? userSubmitted : uploadStatus(schedule[id], elapsed, false) === "Submitted"));
+}
+export const shouldCloseUpload = (submitted: number, left: number) => submitted === ARTIST_ROSTER.length || left <= 0;
+
+const AUDIO_EXT = /\.(wav|mp3|m4a|aac|ogg|flac)$/i;
+export function validateAudioFile(file: { name: string; type: string; size: number }, format: BattleFormat, durationSec?: number) {
+  if (!file.size) return "That file is empty.";
+  if (!file.type.startsWith("audio/") && !AUDIO_EXT.test(file.name)) return "Unsupported file. Choose WAV, MP3, M4A, AAC, OGG or FLAC.";
+  if (format === "creation" && durationSec != null && durationSec > PERFORMANCE_LIMIT + 0.5) return "Creation entries are limited to 60 seconds.";
+  return null;
+}
+
+/** Scores only valid entries; missing submissions receive no score. Ratings are keyed by roster index. */
+export function rankEntries(ratings: Record<number, number>, entries: string[]) {
+  return rankArtists(ratings).filter((row) => entries.includes(row.id));
+}

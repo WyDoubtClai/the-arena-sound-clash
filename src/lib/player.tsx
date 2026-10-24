@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { beatUrl } from "./synth";
 
-export type Track = { id: string; title: string; artist: string; seed: number; genre?: string; seconds?: number; segmentStart?: number; segmentDuration?: number };
+export type Track = { id: string; title: string; artist: string; seed: number; genre?: string; seconds?: number; segmentStart?: number; segmentDuration?: number; src?: string };
 
 type PlayerState = {
   track: Track | null;
@@ -67,7 +67,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     previewPause.current?.();
     if (track?.id !== t.id) {
       active.current = t;
-      a.src = beatUrl(t.seed, t.seconds ?? 30);
+      a.src = t.src ?? beatUrl(t.seed, t.seconds ?? 30);
       setTrack(t);
       setTime(0);
       setDuration(t.segmentDuration ?? t.seconds ?? 30);

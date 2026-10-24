@@ -1,5 +1,6 @@
 // Procedurally renders short demo beats to WAV blob URLs (no external audio files).
 const cache = new Map<number, string>();
+const raw = new Map<number, ArrayBuffer>();
 
 function rng(seed: number) {
   let s = seed * 9301 + 49297;
@@ -65,10 +66,34 @@ export function beatUrl(seed: number, seconds = 30): string {
   for (let i = 0; i < n; i++) dv.setInt16(44 + i * 2, data[i] * 32767, true);
   const url = URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
   cache.set(seed * 1000 + seconds, url);
+  raw.set(seed * 1000 + seconds, buf);
   return url;
 }
 
 export function waveBars(seed: number, count = 48): number[] {
   const r = rng(seed + 7);
   return Array.from({ length: count }, (_, i) => 0.2 + 0.8 * Math.abs(Math.sin(i * 0.5 + seed)) * (0.5 + r() * 0.5));
+}
+
+/** Cuts [start, start+length) out of a 16-bit mono PCM WAV, keeping the sample data byte-identical. */
+export function sliceWav(buf: ArrayBuffer, start: number, length: number): ArrayBuffer {
+  const dv = new DataView(buf);
+  const sr = dv.getUint32(24, true);
+  const total = (buf.byteLength - 44) / 2;
+  const from = Math.min(total, Math.round(start * sr));
+  const n = Math.max(0, Math.min(total, Math.round((start + length) * sr)) - from);
+  const out = new ArrayBuffer(44 + n * 2);
+  new Uint8Array(out).set(new Uint8Array(buf, 0, 44));
+  const o = new DataView(out);
+  o.setUint32(4, 36 + n * 2, true);
+  o.setUint32(40, n * 2, true);
+  new Uint8Array(out, 44).set(new Uint8Array(buf, 44 + from * 2, n * 2));
+  return out;
+}
+
+/** The exact excerpt of the same rendered audio the shared player streams for (seed, seconds). */
+export function excerptWav(seed: number, seconds: number, start: number, length: number): Blob | null {
+  if (!beatUrl(seed, seconds)) return null;
+  const buf = raw.get(seed * 1000 + seconds);
+  return buf ? new Blob([sliceWav(buf, start, length)], { type: "audio/wav" }) : null;
 }
