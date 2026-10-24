@@ -35,7 +35,7 @@ const personByName = (name: string) => people.find((p) => p.name === name);
 const producerGenres = (id: string) => [...new Set(beats.filter((b) => b.producer === id).map((b) => b.genre))];
 
 function CreatorName({ p, className }: { p: Person; className?: string }) {
-  if (isProfile(p.id)) return <Link to="/profile" search={{ profile: p.id } as never} className={cn("hover:text-violet hover:underline", className)}>{p.name}</Link>;
+  if (isProfile(p.id)) return <a href={`/profile?profile=${p.id}`} className={cn("hover:text-violet hover:underline", className)}>{p.name}</a>;
   return <span className={className} title="Individual profile is a preview — not available yet">{p.name}</span>;
 }
 
