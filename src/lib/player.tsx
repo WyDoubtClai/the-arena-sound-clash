@@ -18,7 +18,9 @@ type PlayerState = {
   requestAudioFocus: (pausePreview: () => void) => () => void;
 };
 
-const Ctx = createContext<PlayerState | null>(null);
+// Keep one context identity across hot reloads (editing synth.ts re-runs this module; a new context would orphan consumers).
+const g = globalThis as { __arenaPlayerCtx?: React.Context<PlayerState | null> };
+const Ctx = (g.__arenaPlayerCtx ??= createContext<PlayerState | null>(null));
 
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const audio = useRef<HTMLAudioElement | null>(null);
