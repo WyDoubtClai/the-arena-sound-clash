@@ -13,7 +13,7 @@ import { fmt, usePlayer, type Track } from "@/lib/player";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/artist-quick-battle")({
-  validateSearch: (search: Record<string, unknown>): { format?: "song" } => (search.format === "song" ? { format: "song" } : {}),
+  validateSearch: (search: Record<string, unknown>): { format?: "song" } => (search["format"] === "song" ? { format: "song" } : {}),
   head: () => ({ meta: [
     { title: "Artist Quick Battle — The Arena" },
     { name: "description", content: "Two artist formats: a 15-minute creation battle on a shared Crate beat, or Song-for-Song with finished tracks. Phase 1 demo." },

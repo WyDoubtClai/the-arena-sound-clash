@@ -25,7 +25,7 @@ describe("Artist Quick Battle formats", () => {
     const s = uploadSchedule(true);
     const ids = submittedIds(s, UPLOAD_WINDOW, false);
     expect(ids).toHaveLength(6);
-    expect(uploadStatus(s.juno, UPLOAD_WINDOW, true)).toBe("Missed Deadline");
+    expect(uploadStatus(s["juno"], UPLOAD_WINDOW, true)).toBe("Missed Deadline");
     expect(rankEntries({}, ids).map((r) => r.id)).not.toContain("juno");
     expect(rankEntries({}, [])).toEqual([]);
     expect(rankEntries({}, ["novarae"])).toHaveLength(1);
