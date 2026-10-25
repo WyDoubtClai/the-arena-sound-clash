@@ -27,18 +27,20 @@ export const profileEditSchema = z.object({ ...fields, revision: z.number().int(
 export const roleEditSchema = z.object({ creator_role: creatorRoleSchema, revision: z.number().int().nonnegative().safe() }).strict();
 const email = z.string().trim().email().max(254);
 const password = z.string().min(12, "Use at least 12 characters.").max(128);
+// Preserve Zod 3's UUID-shaped input contract; verified Auth still establishes ownership.
+const accountId = z.guid();
 export const accountActionSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("signup"), email, password }).strict(),
   z.object({ action: z.literal("signin"), email, password: z.string().min(1).max(128) }).strict(),
   z.object({ action: z.literal("recover"), email }).strict(),
   z.object({ action: z.literal("resend"), email }).strict(),
   z.object({ action: z.literal("exchange"), code: z.string().min(1).max(4096) }).strict(),
-  z.object({ action: z.literal("password"), accountId: z.string().uuid(), password }).strict(),
+  z.object({ action: z.literal("password"), accountId, password }).strict(),
   z.object({ action: z.literal("signout") }).strict(),
-  z.object({ action: z.literal("create-profile"), accountId: z.string().uuid(), profile: profileCreateSchema }).strict(),
-  z.object({ action: z.literal("edit-profile"), accountId: z.string().uuid(), profile: profileEditSchema }).strict(),
-  z.object({ action: z.literal("recording"), accountId: z.string().uuid(), preferences: recordingSchema }).strict(),
-  z.object({ action: z.literal("role"), accountId: z.string().uuid(), profile: roleEditSchema }).strict(),
+  z.object({ action: z.literal("create-profile"), accountId, profile: profileCreateSchema }).strict(),
+  z.object({ action: z.literal("edit-profile"), accountId, profile: profileEditSchema }).strict(),
+  z.object({ action: z.literal("recording"), accountId, preferences: recordingSchema }).strict(),
+  z.object({ action: z.literal("role"), accountId, profile: roleEditSchema }).strict(),
 ]);
 export type AccountAction = z.infer<typeof accountActionSchema>;
 export type CreatorProfile = {
