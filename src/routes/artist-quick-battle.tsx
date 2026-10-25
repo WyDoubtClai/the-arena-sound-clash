@@ -14,6 +14,9 @@ import { downloadRewardFile, newBattleId, qualifiesForReward, rewardId, reserved
 const BATTLE_KEY = "arena-aqb-battle-id";
 import { fmt, usePlayer, type Track } from "@/lib/player";
 import { cn } from "@/lib/utils";
+import { catalogSelectionStatus, lockCatalogItem, playableCatalogItem, type CatalogSelection } from "@/lib/catalog-selection";
+import { selectedSongTrack, songsFor } from "@/lib/song-catalog";
+import { SongSelection } from "@/components/arena/song-selection";
 
 export const Route = createFileRoute("/artist-quick-battle")({
   validateSearch: (search: Record<string, unknown>): { format?: "song" } => (search["format"] === "song" ? { format: "song" } : {}),
@@ -21,7 +24,7 @@ export const Route = createFileRoute("/artist-quick-battle")({
     { title: "Artist Quick Battle — The Arena" },
     { name: "description", content: "Two artist formats: a 15-minute creation battle on a shared Crate beat, or Song-for-Song with finished tracks. Phase 1 demo." },
     { property: "og:title", content: "Artist Quick Battle — The Arena" },
-    { property: "og:description", content: "Creation Battle or Song-for-Song: upload, judge and see results in the Phase 1 artist battle demo." },
+    { property: "og:description", content: "Creation Battle or Song-for-Song: enter, judge and see results in the Phase 1 artist battle demo." },
     { property: "og:type", content: "website" },
     { name: "twitter:card", content: "summary_large_image" },
   ] }),
@@ -55,6 +58,9 @@ function ArtistQuickBattle() {
   const [vote, setVote] = useState<string | null>(null);
   const [ballot, setBallot] = useState<ReturnType<typeof closeBallot> | null>(null);
   const [lyrics, setLyrics] = useState("");
+  const [candidateId, setCandidateId] = useState<string | null>(null);
+  const [lockedSong, setLockedSong] = useState<CatalogSelection | null>(null);
+  const [judgedSongs, setJudgedSongs] = useState<Record<string, CatalogSelection>>({});
   const [mine, setMine] = useState<MyEntry | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
@@ -73,8 +79,8 @@ function ArtistQuickBattle() {
   const [battleId, setBattleId] = useState("");
   useEffect(() => {
     const saved = sessionStorage.getItem(BATTLE_KEY);
-    const id = saved ?? newBattleId();
-    if (!saved) sessionStorage.setItem(BATTLE_KEY, id);
+    const id = format === "song" ? newBattleId() : saved ?? newBattleId();
+    if (format === "creation" && !saved) sessionStorage.setItem(BATTLE_KEY, id);
     setBattleId(id);
   }, []);
   const reservedKey = [...reservedBeatIds(vault.list)].sort().join(",");
@@ -84,31 +90,46 @@ function ArtistQuickBattle() {
   const winner = ballot?.winner;
   const winnerVotes = ballot?.counts.find((row) => row.beat.id === winner?.id)?.count ?? 0;
   const isUpload = name === "3-Minute Upload";
+  const isSelection = name === "3-Minute Song Selection";
+  const isEntryWindow = isUpload || isSelection;
   const elapsed = UPLOAD_WINDOW - left;
-  const submitted = isUpload ? submittedIds(schedule, elapsed, !!mine || (demo && left <= 0)) : entries;
+  const songLocks = useMemo(() => {
+    if (!isSelection) return judgedSongs;
+    const locks: Record<string, CatalogSelection> = lockedSong ? { [me.id]: lockedSong } : {};
+    for (const id of ARTIST_ROSTER.slice(1)) {
+      const at = schedule[id];
+      if (at == null || elapsed < at) continue;
+      const song = songsFor(id).find(playableCatalogItem);
+      const selection = song && lockCatalogItem(null, song, battleId, id, true);
+      if (selection) locks[id] = selection;
+    }
+    return locks;
+  }, [isSelection, judgedSongs, lockedSong, schedule, elapsed, battleId]);
+  const submitted = isSelection ? ARTIST_ROSTER.filter((id) => !!songLocks[id]) : isUpload ? submittedIds(schedule, elapsed, !!mine || (demo && left <= 0)) : entries;
   const results = rankEntries(ratings, entries);
   const missing = ARTIST_ROSTER.filter((id) => !entries.includes(id));
   const currentId = entries[index];
   const rosterIndex = ARTIST_ROSTER.indexOf(currentId);
-  const submission: Track | null = !currentId ? null : currentId === me.id && mine && !mine.demo
+  const submission: Track | null = !currentId ? null : format === "song" ? (judgedSongs[currentId] ? selectedSongTrack(judgedSongs[currentId]) : null) : currentId === me.id && mine && !mine.demo
     ? { id: `artist-entry-mine-${mine.name}`, title: `Your Entry · ${mine.name}`, artist: "You (local file)", seed: 300, seconds: mine.seconds, src: mine.url }
     : currentId === me.id ? { id: "artist-entry-mine-demo", title: "Blaze — Demo Entry (simulated audio)", artist: "You · demo submission", seed: 300, seconds: PERFORMANCE_LIMIT }
-    : { id: `artist-entry-${rosterIndex}`, title: `${byId(currentId).name}'s ${format === "song" ? "Song" : "Entry"} (simulated)`, artist: byId(currentId).name, seed: 300 + rosterIndex, seconds: PERFORMANCE_LIMIT };
+    : { id: `artist-entry-${rosterIndex}`, title: `${byId(currentId).name}'s Entry (simulated)`, artist: byId(currentId).name, seed: 300 + rosterIndex, seconds: PERFORMANCE_LIMIT };
   const [segStart, segEnd] = winner ? segmentBounds(winner) : [0, 0];
   const beatTrack: Track | null = winner ? { id: `artist-segment-${winner.id}`, title: `${winner.title} · 60s segment`, artist: byId(winner.producer).name, seed: winner.seed, seconds: seconds(winner.duration), segmentStart: segStart, segmentDuration: PERFORMANCE_LIMIT } : null;
-  const timed = (n: string) => ({ "Crate Draw": 120, "15-Minute Creation": 900, "3-Minute Upload": UPLOAD_WINDOW } as Record<string, number>)[n] ?? 0;
+  const timed = (n: string) => ({ "Crate Draw": 120, "15-Minute Creation": 900, "3-Minute Upload": UPLOAD_WINDOW, "3-Minute Song Selection": UPLOAD_WINDOW } as Record<string, number>)[n] ?? 0;
 
   function go(next: number) { setLeft(timed(stages[next])); setStage(next); }
   function advance() {
     player.pause();
     if (name === "Crate Draw") { setBallot(closeBallot(choices, vote)); go(stage + 2); return; } // reveal resolves instantly; 15:00 starts now
-    if (isUpload) { setLeft(0); return; } // Skip = expire the window; the single close effect handles it.
+    if (isEntryWindow) { setLeft(0); return; } // Skip = expire the window; the single close effect handles it.
     go(Math.min(stages.length - 1, stage + 1));
   }
   function closeUpload(valid: string[]) {
     if (closedStage.current === stage) return; // one transition per window
     closedStage.current = stage;
     player.pause();
+    if (isSelection) setJudgedSongs(songLocks);
     setEntries(valid); setClosedWith(left); setIndex(0);
     go(valid.length ? stage + 1 : stages.length - 1);
   }
@@ -120,12 +141,26 @@ function ArtistQuickBattle() {
   }
   function restart(nextFormat = format) {
     player.pause();
-    const fresh = newBattleId(); sessionStorage.setItem(BATTLE_KEY, fresh); setBattleId(fresh);
+    const fresh = newBattleId(); if (nextFormat === "creation") sessionStorage.setItem(BATTLE_KEY, fresh); setBattleId(fresh);
     if (mine?.url) URL.revokeObjectURL(mine.url);
+    setCandidateId(null); setLockedSong(null); setJudgedSongs({});
     setStage(0); setLeft(0); setReady([]); setVote(null); setBallot(null); setLyrics(""); setMine(null); setFileError(null); setEntries([]); setClosedWith(null); setIndex(0); setRatings({}); setReactions([]);
     setChat(welcome()); setMessage(""); played.current = false; closedStage.current = null;
     if (nextFormat !== format) void navigate({ search: nextFormat === "song" ? { format: "song" } : {} });
   }
+  function lockSong() {
+    const song = songsFor(me.id).find((item) => item.id === candidateId);
+    if (!song) return;
+    setLockedSong((previous) => lockCatalogItem(previous, song, battleId, me.id, isSelection && left > 0 && closedStage.current !== stage));
+    player.pause();
+  }
+  // Song sessions never retain a previous screen's playing audio; preserve the shared player itself.
+  useEffect(() => {
+    if (format !== "song") return;
+    player.pause();
+    return () => player.pause();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [format]);
   async function chooseFile(file: File | undefined) {
     if (!file || !isUpload || (mine && !mine.demo)) return;
     const typeError = validateAudioFile(file, format);
@@ -180,15 +215,15 @@ function ArtistQuickBattle() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [name, left, demo]);
   useEffect(() => {
-    if (isUpload || left !== 0 || !timed(name)) return;
+    if (isEntryWindow || left !== 0 || !timed(name)) return;
     advance();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [left, stage, vote]);
   // Single upload close: everyone submitted early, or the window expired.
   useEffect(() => {
-    if (isUpload && shouldCloseUpload(submitted.length, left)) closeUpload(submitted);
+    if (isEntryWindow && shouldCloseUpload(submitted.length, left)) closeUpload(submitted);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isUpload, submitted.length, left]);
+  }, [isEntryWindow, submitted.length, left]);
   useEffect(() => {
     if (lastStage.current !== stage) { player.pause(); lastStage.current = stage; }
     if (name !== "Listen & Judge" || !submission) return;
@@ -237,12 +272,12 @@ function ArtistQuickBattle() {
       </div>
     </div>
     <ol className="no-scrollbar flex gap-2 overflow-x-auto" aria-label="Battle stages">{stages.map((label, i) => <li key={label} aria-current={stage === i ? "step" : undefined} className={cn("flex shrink-0 items-center gap-2 rounded-full border px-3 py-1 text-xs", i === stage ? "border-violet bg-violet/15 text-violet" : i < stage ? "text-teal" : "text-muted-foreground")}>{i < stage ? <Check className="h-3 w-3" /> : i + 1}{label}</li>)}</ol>
-    <p className="text-xs text-muted-foreground">Frontend demo · all other participants, votes, submissions and rewards are simulated. Your file stays on this device.</p>
+    <p className="text-xs text-muted-foreground">Frontend demo · all other participants, votes, entries and rewards are simulated. No new audio is uploaded or stored by this battle.</p>
 
     {name === "Waiting Room" && <section>
-      <div className="mb-4 grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Battle format">{(["creation", "song"] as const).map((value) => <button key={value} role="radio" aria-checked={format === value} onClick={() => restart(value)} className={cn("rounded-xl border p-4 text-left", format === value ? "border-violet bg-violet/10" : "hover:border-violet/50")}><p className="font-semibold">{FORMAT_LABEL[value]}</p><p className="text-xs text-muted-foreground">{value === "creation" ? "Crate draw · beat vote · 15 min to create · 60s entry · 3 min upload" : "Finished songs · 3 min upload · no beat draw or creation timer"}</p></button>)}</div>
+      <div className="mb-4 grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Battle format">{(["creation", "song"] as const).map((value) => <button key={value} role="radio" aria-checked={format === value} onClick={() => restart(value)} className={cn("rounded-xl border p-4 text-left", format === value ? "border-violet bg-violet/10" : "hover:border-violet/50")}><p className="font-semibold">{FORMAT_LABEL[value]}</p><p className="text-xs text-muted-foreground">{value === "creation" ? "Crate draw · beat vote · 15 min to create · 60s entry · 3 min upload" : "Profile songs · 3 min selection · no beat draw or creation timer"}</p></button>)}</div>
       <h2 className="text-xl font-bold">Waiting Room</h2><p className="text-sm text-muted-foreground">All eight artists must be ready.</p><BattleParticipants roster={ARTIST_ROSTER} ready={ready} />
-      <label className="mt-4 flex items-center gap-2 text-sm"><Switch checked={oneMisses} onCheckedChange={setOneMisses} aria-label="Simulate a missed deadline" />Simulate one artist missing the upload deadline</label>
+      <label className="mt-4 flex items-center gap-2 text-sm"><Switch checked={oneMisses} onCheckedChange={setOneMisses} aria-label="Simulate a missed deadline" />Simulate one artist missing the entry deadline</label>
       <Button className="mt-5 w-full" disabled={ready.includes(me.id)} onClick={() => setReady((previous) => [...previous, me.id])}>{ready.includes(me.id) ? `Ready! (${ready.length}/8)` : "Ready Up"}</Button>
     </section>}
 
@@ -264,14 +299,22 @@ function ArtistQuickBattle() {
       <div className="grid grid-cols-4 gap-3 sm:grid-cols-8">{ARTIST_ROSTER.map((id, i) => <div key={id} className="flex flex-col items-center gap-1"><Avatar id={id} /><span className="text-[10px] text-muted-foreground">{id === me.id ? "You" : ["writing", "recording", "rehearsing"][(i + Math.floor(left / 30)) % 3]}</span></div>)}</div>
     </section>}
 
+    {isSelection && <SongSelection
+      songs={songsFor(me.id)} battleId={battleId} left={left}
+      candidateId={candidateId} locked={lockedSong} onSelect={setCandidateId} onLock={lockSong}
+      statuses={Object.fromEntries(ARTIST_ROSTER.map((id) => [id, catalogSelectionStatus(
+        !!songLocks[id], id === me.id && candidateId ? 0 : elapsed, id === me.id ? (candidateId ? 0 : null) : schedule[id], left <= 0,
+      )]))}
+    />}
+
     {isUpload && <section className="space-y-4">
       {format === "creation" && winner && <p className="text-sm text-muted-foreground">{winner.title} · {byId(winner.producer).name} · {winner.segment} · {PROMPT}</p>}
-      <div className="flex flex-wrap items-end justify-between gap-4"><BattleCountdown label="Upload window closes in" left={left} urgent /><div className="min-w-[200px] flex-1"><p className="flex justify-between text-sm"><span>{format === "song" ? "Songs submitted" : "Performances submitted"}</span><strong aria-live="polite">{submitted.length} of 8 Submitted</strong></p><div className="mt-2 h-2 overflow-hidden rounded-full bg-surface"><div className="h-full bg-violet transition-all" style={{ width: `${(submitted.length / 8) * 100}%` }} /></div></div></div>
+      <div className="flex flex-wrap items-end justify-between gap-4"><BattleCountdown label="Upload window closes in" left={left} urgent /><div className="min-w-[200px] flex-1"><p className="flex justify-between text-sm"><span>{"Performances submitted"}</span><strong aria-live="polite">{submitted.length} of 8 Submitted</strong></p><div className="mt-2 h-2 overflow-hidden rounded-full bg-surface"><div className="h-full bg-violet transition-all" style={{ width: `${(submitted.length / 8) * 100}%` }} /></div></div></div>
       <p className="text-xs text-muted-foreground">Everyone shares the same 3:00 window. When all eight valid entries are in, the room moves straight to Listen & Judge; if time runs out, missing entries are excluded.</p>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{ARTIST_ROSTER.map((id) => { const status = id === me.id ? (mine ? (mine.demo ? "Submitted (demo)" : "Submitted") : checking ? "Uploading" : "Waiting") : uploadStatus(schedule[id], elapsed, false); return <div key={id} className={cn("flex items-center gap-2 rounded-lg border p-2", status.startsWith("Submitted") && "border-teal/60")}><Avatar id={id} size={28} /><div className="min-w-0"><p className="truncate text-xs font-semibold">{id === me.id ? "You" : byId(id).name}</p><p className={cn("text-[11px]", status.startsWith("Submitted") ? "text-teal" : status === "Uploading" ? "text-gold" : "text-muted-foreground")}>{status}</p></div></div>; })}</div>
       {mine && <Panel className="flex items-center gap-3 border-teal/60"><CheckCircle2 className="h-6 w-6 shrink-0 text-teal" /><div className="min-w-0"><p className="font-semibold">Submitted: <span className="break-all">{mine.demo ? "Blaze — Demo Entry" : mine.name}</span>{mine.demo && <span className="ml-2 rounded-full bg-gold/15 px-2 py-0.5 text-[10px] text-gold">DEMO</span>}</p><p className="text-xs text-muted-foreground">{mine.demo ? "Simulated audio · no actual file uploaded · replace it with a real file until the window closes" : `${fmt(mine.seconds)} · kept on this device · waiting for the other artists`}</p></div></Panel>}
       {demo && !mine && <div className="flex flex-wrap items-center gap-3"><Button variant="outline" onClick={() => setMine({ name: "Demo Entry", url: "", seconds: PERFORMANCE_LIMIT, demo: true })}>Use Demo Submission</Button><span className="text-xs text-muted-foreground">Demo Mode: with no file uploaded, a labeled simulated entry is used for you when the window closes.</span></div>}
-      {(!mine || mine.demo) && <label onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); void chooseFile(e.dataTransfer.files[0]); }} className="flex cursor-pointer flex-col items-center gap-3 rounded-lg border-2 border-dashed p-8 text-center"><Upload className="h-8 w-8 text-violet" /><span>{checking ? "Checking file…" : format === "song" ? "Choose or drop your finished song" : "Choose or drop your performance"}</span><span className="text-xs text-muted-foreground">WAV / MP3 / M4A / AAC / OGG / FLAC{format === "creation" ? " · 60 seconds maximum" : " · full-length songs allowed"}</span><input aria-label={format === "song" ? "Song file" : "Artist performance"} className="sr-only" type="file" accept="audio/*,.wav,.mp3,.m4a,.aac,.ogg,.flac" onChange={(e) => { void chooseFile(e.target.files?.[0]); e.target.value = ""; }} /></label>}
+      {(!mine || mine.demo) && <label onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); void chooseFile(e.dataTransfer.files[0]); }} className="flex cursor-pointer flex-col items-center gap-3 rounded-lg border-2 border-dashed p-8 text-center"><Upload className="h-8 w-8 text-violet" /><span>{checking ? "Checking file…" : "Choose or drop your performance"}</span><span className="text-xs text-muted-foreground">WAV / MP3 / M4A / AAC / OGG / FLAC{format === "creation" ? " · 60 seconds maximum" : " · full-length songs allowed"}</span><input aria-label={"Artist performance"} className="sr-only" type="file" accept="audio/*,.wav,.mp3,.m4a,.aac,.ogg,.flac" onChange={(e) => { void chooseFile(e.target.files?.[0]); e.target.value = ""; }} /></label>}
       {fileError && <p role="alert" className="text-sm text-coral">{fileError}</p>}
     </section>}
 
@@ -281,9 +324,9 @@ function ArtistQuickBattle() {
     </section>}
 
     {name === "Results" && <section className="space-y-5"><h2 className="flex items-center gap-2 text-2xl font-bold"><Trophy className="text-gold" />Final Results · {FORMAT_LABEL[format]}</h2>
-      <p className="text-xs text-muted-foreground">{closedWith ? `Uploads closed early with ${fmt(closedWith)} left — all eight submitted. ` : "Upload window ran to 0:00. "}Simulated judge averages plus your ratings · fictional demonstration XP</p>
-      {results.length === 0 ? <p className="rounded-lg border border-dashed p-4 text-sm">No valid submissions arrived before the deadline, so nothing was judged and no placements or XP were given.</p>
-        : <ol className="divide-y rounded-lg border">{results.map((result, i) => <li key={result.id} className={cn("flex items-center gap-3 p-3", result.id === me.id && "bg-violet/10")}><span className="w-4 font-bold text-muted-foreground">{i + 1}</span><Avatar id={result.id} size={32} /><span className="min-w-0 flex-1 truncate text-sm">{result.id === me.id ? "You (Blaze)" : byId(result.id).name}</span><span className="text-sm text-gold">{result.avg.toFixed(2)}★</span><span className="text-xs text-teal">+{XP[i]} XP (demo)</span></li>)}</ol>}
+      <p className="text-xs text-muted-foreground">{closedWith ? `${format === "song" ? "Selection" : "Uploads"} closed early with ${fmt(closedWith)} left — all eight ${format === "song" ? "locked in" : "submitted"}. ` : `${format === "song" ? "Selection" : "Upload"} window ran to 0:00. `}Simulated judge averages plus your ratings · fictional demonstration XP</p>
+      {results.length === 0 ? <p className="rounded-lg border border-dashed p-4 text-sm">No valid entries arrived before the deadline, so nothing was judged and no placements or XP were given.</p>
+        : <ol className="divide-y rounded-lg border">{results.map((result, i) => <li key={result.id} className={cn("flex items-center gap-3 p-3", result.id === me.id && "bg-violet/10")}><span className="w-4 font-bold text-muted-foreground">{i + 1}</span><Avatar id={result.id} size={32} /><span className="min-w-0 flex-1 truncate text-sm">{result.id === me.id ? "You (Blaze)" : byId(result.id).name}{format === "song" && <span className="block truncate text-xs text-muted-foreground">{judgedSongs[result.id]?.item.title}</span>}</span><span className="text-sm text-gold">{result.avg.toFixed(2)}★</span><span className="text-xs text-teal">+{XP[i]} XP (demo)</span></li>)}</ol>}
       {missing.length > 0 && <p className="text-sm text-muted-foreground">Missed deadline · not scored: {missing.map((id) => id === me.id ? "You" : byId(id).name).join(", ")}</p>}
       {format === "creation" && winner && <div className="space-y-2 border-y py-4"><p className="text-sm">Producer credit: <strong>{byId(winner.producer).name}</strong> · {winner.title}</p>{winner.giveaway && results[0] && !myReward && <p className="flex items-center gap-2 font-semibold text-gold"><Gift />Simulated Beat Gift: {byId(results[0].id).name}</p>}{!winner.giveaway && <p className="text-xs text-muted-foreground">Competition Only beat · no instrumental is awarded.</p>}<p className="text-xs text-muted-foreground">No real license is issued in Phase 1. XP and rewards do not affect accounts.</p></div>}
       {myReward && <Panel className="space-y-3 border-gold/60"><p className="flex items-center gap-2 text-lg font-bold text-gold"><Gift />You won the full instrumental: {myReward.beatTitle}</p><p className="text-sm text-muted-foreground">Produced by {byId(myReward.producer).name} · {myReward.status === "claimed" ? "Claimed" : "Awarded — Awaiting Claim"} · reserved for you and removed from future draws and purchases.</p><div className="flex flex-wrap gap-2"><Button onClick={async () => { if (await downloadRewardFile(myReward, me.id)) vault.claim(myReward.id, me.id); else toast.error("The full beat couldn't be prepared in this browser."); }}><Download />{myReward.status === "claimed" ? "Re-download Full Beat" : "Claim & Download Full Beat"}</Button><Button asChild variant="outline"><a href="/profile?tab=vault">View in My Beat Vault</a></Button></div><p className="text-xs text-muted-foreground">Phase 1 simulation: the full-length demo audio your 60s excerpt was cut from. No ownership, exclusive rights or commercial license. Saved in this browser only.</p></Panel>}

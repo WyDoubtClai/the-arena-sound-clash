@@ -53,7 +53,7 @@ export function rankArtists(ratings: Record<number, number>) {
 // ---- Formats, shared 3-minute upload window, exclusions ----
 export type BattleFormat = "creation" | "song";
 export const FORMAT_LABEL: Record<BattleFormat, string> = { creation: "15-Minute Creation Battle", song: "Song-for-Song Quick Battle" };
-export const SONG_STAGES = ["Waiting Room", "3-Minute Upload", "Listen & Judge", "Results"];
+export const SONG_STAGES = ["Waiting Room", "3-Minute Song Selection", "Listen & Judge", "Results"];
 export const stagesFor = (format: BattleFormat) => (format === "creation" ? ARTIST_STAGES : SONG_STAGES);
 export const UPLOAD_WINDOW = 180;
 export const ballotLabel = (count: number, total: number) => (count > total / 2 ? "Majority winner" : "Plurality winner");

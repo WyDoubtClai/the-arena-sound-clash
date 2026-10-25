@@ -5,7 +5,7 @@ import { sliceWav } from "@/lib/synth";
 describe("Artist Quick Battle formats", () => {
   it("Creation has seven stages and Song-for-Song four, without draw or creation", () => {
     expect(ARTIST_STAGES).toHaveLength(7);
-    expect(SONG_STAGES).toEqual(["Waiting Room", "3-Minute Upload", "Listen & Judge", "Results"]);
+    expect(SONG_STAGES).toEqual(["Waiting Room", "3-Minute Song Selection", "Listen & Judge", "Results"]);
   });
   it("upload window is three minutes", () => { expect(UPLOAD_WINDOW).toBe(180); });
   it("never advances on the local submission alone", () => {
