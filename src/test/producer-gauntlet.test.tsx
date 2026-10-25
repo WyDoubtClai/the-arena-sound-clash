@@ -3,12 +3,14 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Route } from "@/routes/gauntlet";
 
+const player = vi.hoisted(() => ({ pause: vi.fn(), play: vi.fn(), isCurrent: () => false }));
+
 vi.mock("@/lib/player", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/player")>()),
-  usePlayer: () => ({ pause: vi.fn() }),
+  usePlayer: () => player,
 }));
 vi.mock("@/lib/synth", () => ({
-  beatUrl: () => "demo.wav",
+  beatUrl: vi.fn((seed: number, length: number) => `demo-${seed}-${length}.wav`),
   waveBars: () => [0.3, 0.7, 0.5],
 }));
 
@@ -46,15 +48,27 @@ function readyUp() {
   expect(kit()).toBeInTheDocument();
 }
 
-beforeEach(() => {
-  vi.useFakeTimers();
-  DemoAudio.instances = [];
-  vi.stubGlobal("Audio", DemoAudio);
-  render(
+let view: ReturnType<typeof render>;
+function mount() {
+  return render(
     <StrictMode>
       <Gauntlet />
     </StrictMode>,
   );
+}
+
+beforeEach(() => {
+  vi.useFakeTimers();
+  DemoAudio.instances = [];
+  vi.clearAllMocks();
+  const storage = new Map<string, string>();
+  vi.stubGlobal("sessionStorage", {
+    getItem: (key: string) => storage.get(key) ?? null,
+    setItem: (key: string, value: string) => storage.set(key, value),
+  });
+  vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+  vi.stubGlobal("Audio", DemoAudio);
+  view = mount();
 });
 
 afterEach(() => {
@@ -62,19 +76,50 @@ afterEach(() => {
   vi.clearAllTimers();
   vi.useRealTimers();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 describe("Producer Gauntlet stage transitions", () => {
-  it("waits at the revealed kit until creation is explicitly started", () => {
+  it("starts once automatically at kit reveal, without waiting for a download", () => {
     readyUp();
-    advance(60_000);
-    expect(kit()).toBeInTheDocument();
-    click("Download Kit");
-    advance(60_000);
-    expect(kit()).toBeInTheDocument();
-    click("Start Creation");
+    expect(screen.queryByRole("button", { name: "Start Creation" })).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Cook time 🔥" })).toBeInTheDocument();
     expect(screen.getByText("15:00")).toBeInTheDocument();
+    advance(1000);
+    expect(screen.getByText("14:30")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Download Kit" })).toBeInTheDocument();
+    expect(kit()).toBeInTheDocument();
+  });
+
+  it("keeps all five samples previewable and downloadable without resetting the clock", () => {
+    readyUp();
+    advance(1000);
+    const names = [
+      "Dusty Rhodes Chord.wav",
+      "Vinyl Crackle Loop.wav",
+      "808 Boom (C).wav",
+      "Choir Stab.wav",
+      "Perc Shaker.wav",
+    ];
+    for (const [i, name] of names.entries()) {
+      click(`Play ${name}`);
+      expect(player.play).toHaveBeenLastCalledWith(
+        expect.objectContaining({ seed: 200 + i, seconds: 8 }),
+      );
+      click(`Download ${name}`);
+    }
+    const downloads = vi.mocked(HTMLAnchorElement.prototype.click);
+    expect(downloads).toHaveBeenCalledTimes(5);
+    expect(downloads.mock.instances.map((link) => (link as HTMLAnchorElement).download)).toEqual(
+      names,
+    );
+    expect(screen.getByText("14:30")).toBeInTheDocument();
+    click("Download Kit");
+    expect(downloads).toHaveBeenCalledTimes(10);
+    expect(screen.getByRole("button", { name: "Download Kit Again" })).toBeInTheDocument();
+    advance(1000);
+    expect(screen.getByText("14:00")).toBeInTheDocument();
+    expect(kit()).toBeInTheDocument();
   });
 
   it.each([
@@ -85,7 +130,6 @@ describe("Producer Gauntlet stage transitions", () => {
     ({ demo, creationMs, uploadMs }) => {
       readyUp();
       if (!demo) fireEvent.click(screen.getByRole("switch", { name: "Demo mode" }));
-      click("Start Creation");
       advance(creationMs - 1000);
       expect(screen.getByRole("heading", { name: "Cook time 🔥" })).toBeInTheDocument();
       expect(screen.getByText(demo ? "0:30" : "0:01")).toBeInTheDocument();
@@ -105,7 +149,6 @@ describe("Producer Gauntlet stage transitions", () => {
 
   it("switches acceleration without resetting time or leaving old timers running", () => {
     readyUp();
-    click("Start Creation");
     advance(1000);
     expect(screen.getByText("14:30")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("switch", { name: "Demo mode" }));
@@ -118,7 +161,6 @@ describe("Producer Gauntlet stage transitions", () => {
 
   it("advances only once when Skip and countdown expiry arrive together", () => {
     readyUp();
-    click("Start Creation");
     advance(29_999);
     act(() => {
       vi.advanceTimersByTime(1);
@@ -134,7 +176,6 @@ describe("Producer Gauntlet stage transitions", () => {
   it("skips one stage at a time and keeps judging all eight entries before results", () => {
     click("Skip");
     expect(kit()).toBeInTheDocument();
-    click("Skip");
     expect(screen.getByText("15:00")).toBeInTheDocument();
     click("Skip");
     expect(upload()).toBeInTheDocument();
@@ -155,14 +196,14 @@ describe("Producer Gauntlet stage transitions", () => {
   });
 
   it("clears listening callbacks and entry state on restart", () => {
-    for (let stage = 0; stage < 4; stage++) click("Skip");
+    for (let stage = 0; stage < 3; stage++) click("Skip");
     click("Skip");
     const previousAudio = DemoAudio.instances[0];
     click("Restart");
     expect(previousAudio.paused).toBe(true);
     expect(previousAudio.onended).toBeNull();
     expect(previousAudio.ontimeupdate).toBeNull();
-    for (let stage = 0; stage < 4; stage++) click("Skip");
+    for (let stage = 0; stage < 3; stage++) click("Skip");
     expect(listening()).toBeInTheDocument();
     expect(DemoAudio.instances).toHaveLength(2);
   });
@@ -172,7 +213,6 @@ describe("Producer Gauntlet stage transitions", () => {
     (stage) => {
       readyUp();
       click("Download Kit");
-      click("Start Creation");
       if (stage === "upload") {
         click("Skip");
         click("Simulate upload");
@@ -186,9 +226,7 @@ describe("Producer Gauntlet stage transitions", () => {
       advance(800);
       expect(kit()).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Download Kit" })).toBeInTheDocument();
-      advance(60_000);
       expect(kit()).toBeInTheDocument();
-      click("Start Creation");
       expect(screen.getByText("15:00")).toBeInTheDocument();
       advance(1000);
       expect(screen.getByText("14:30")).toBeInTheDocument();
@@ -198,6 +236,53 @@ describe("Producer Gauntlet stage transitions", () => {
       expect(screen.getByRole("button", { name: "Lock In & Continue" })).toBeDisabled();
     },
   );
+
+  it("retains the creation deadline and kit access across navigation", () => {
+    readyUp();
+    advance(1000);
+    view.unmount();
+    advance(5000);
+    view = mount();
+    expect(kit()).toBeInTheDocument();
+    expect(screen.getByText("12:00")).toBeInTheDocument();
+    advance(1000);
+    expect(screen.getByText("11:30")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Start Creation" })).not.toBeInTheDocument();
+  });
+
+  it("uses elapsed time while away instead of granting a fresh upload window", () => {
+    readyUp();
+    view.unmount();
+    advance(31_000);
+    view = mount();
+    expect(upload()).toBeInTheDocument();
+    expect(screen.getByText("2:30")).toBeInTheDocument();
+    advance(5000);
+    expect(listening()).toBeInTheDocument();
+  });
+
+  it("restores the submission and judging position with ratings rather than restarting the battle", () => {
+    readyUp();
+    click("Skip");
+    click("Simulate upload");
+    advance(1000);
+    view.unmount();
+    advance(1000);
+    view = mount();
+    expect(upload()).toBeInTheDocument();
+    expect(screen.getByText("2:00")).toBeInTheDocument();
+    expect(screen.getByText("✓ sunday_service_flip_FINAL.wav")).toBeInTheDocument();
+    click("Lock In & Continue");
+    click("Skip");
+    fireEvent.click(screen.getByRole("radio", { name: "5 stars" }));
+    view.unmount();
+    advance(1000);
+    view = mount();
+    expect(screen.getByText("Beat 2 of 8 · Synchronized for all listeners")).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "5 stars" })).toHaveAttribute("aria-checked", "true");
+    expect(DemoAudio.instances[0].paused).toBe(true);
+    expect(DemoAudio.instances[1].src).toBe("demo-101-45.wav");
+  });
 
   it("cancels the pending room-ready transition when restarted", () => {
     click("Ready Up");
