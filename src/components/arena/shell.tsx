@@ -44,11 +44,12 @@ export function AppShell({ children }: { children: ReactNode }) {
               <n.icon className="h-4 w-4" /> {n.label}
             </Link>
           ))}
+          <Link to="/account" className="rounded-lg px-3 py-2 text-sm text-violet">Account · Sign in / Settings</Link>
           <CreateButton className="mt-4" />
         </nav>
         <Link to="/profile" className="flex items-center gap-3 rounded-xl border bg-surface p-3">
           <Avatar id={me.id} size={36} />
-          <div className="min-w-0"><p className="truncate text-sm font-semibold">{me.name}</p><p className="text-xs text-muted-foreground">Level {me.level}</p></div>
+          <div className="min-w-0"><p className="truncate text-sm font-semibold">{me.name}</p><p className="text-xs text-muted-foreground">Demo · Level {me.level}</p></div>
         </Link>
       </aside>
 
@@ -126,7 +127,8 @@ function TopBar() {
           )}
         </div>
         <div className="hidden sm:block"><CreateButton /></div>
-        <Link to="/profile" aria-label="Your profile" className="relative">
+        <Link to="/account" className="text-xs text-violet">Account</Link>
+        <Link to="/profile" aria-label="Demo profile" className="relative">
           <Avatar id={me.id} size={36} ring />
           <span className="absolute -bottom-1 -right-1 rounded-full bg-gold px-1 text-[9px] font-bold text-primary-foreground">{me.level}</span>
         </Link>

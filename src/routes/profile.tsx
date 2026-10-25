@@ -97,7 +97,7 @@ function Profile() {
       <div className="flex flex-wrap gap-2" role="tablist" aria-label="Demo profile">
         {profileIds.map((profile) => <Button key={profile} variant="outline" size="sm" role="tab" aria-selected={id === profile} onClick={() => { setId(profile); setEdit(false); setSettingsOpen(false); }} className={cn("rounded-full", id === profile && "border-violet text-violet")}>View {byId(profile).name}</Button>)}
       </div>
-      <p className="text-xs text-muted-foreground">Demo profiles · All records and accomplishments are fictional</p>
+      <p className="text-xs text-muted-foreground">Demo profiles · All records and accomplishments are fictional. <Link to="/account" className="text-violet">Your real account →</Link></p>
     </div>
 
     {own && creatorSettings.loaded && !creatorSettings.settings && <Panel className="space-y-2 rounded-lg">

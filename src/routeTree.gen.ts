@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AccountRouteImport } from './routes/account'
 import { Route as ArtistQuickBattleRouteImport } from './routes/artist-quick-battle'
 import { Route as CompeteRouteImport } from './routes/compete'
 import { Route as CrateRouteImport } from './routes/crate'
@@ -19,10 +20,17 @@ import { Route as GauntletRouteImport } from './routes/gauntlet'
 import { Route as LobbyRouteImport } from './routes/lobby'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as RankingsRouteImport } from './routes/rankings'
+import { Route as ApiAccountRouteImport } from './routes/api.account'
+import { Route as CreatorsHandleRouteImport } from './routes/creators.$handle'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccountRoute = AccountRouteImport.update({
+  id: '/account',
+  path: '/account',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ArtistQuickBattleRoute = ArtistQuickBattleRouteImport.update({
@@ -70,9 +78,20 @@ const RankingsRoute = RankingsRouteImport.update({
   path: '/rankings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAccountRoute = ApiAccountRouteImport.update({
+  id: '/api/account',
+  path: '/api/account',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CreatorsHandleRoute = CreatorsHandleRouteImport.update({
+  id: '/creators/$handle',
+  path: '/creators/$handle',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/account': typeof AccountRoute
   '/artist-quick-battle': typeof ArtistQuickBattleRoute
   '/compete': typeof CompeteRoute
   '/crate': typeof CrateRoute
@@ -82,9 +101,12 @@ export interface FileRoutesByFullPath {
   '/lobby': typeof LobbyRoute
   '/profile': typeof ProfileRoute
   '/rankings': typeof RankingsRoute
+  '/api/account': typeof ApiAccountRoute
+  '/creators/$handle': typeof CreatorsHandleRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/account': typeof AccountRoute
   '/artist-quick-battle': typeof ArtistQuickBattleRoute
   '/compete': typeof CompeteRoute
   '/crate': typeof CrateRoute
@@ -94,10 +116,13 @@ export interface FileRoutesByTo {
   '/lobby': typeof LobbyRoute
   '/profile': typeof ProfileRoute
   '/rankings': typeof RankingsRoute
+  '/api/account': typeof ApiAccountRoute
+  '/creators/$handle': typeof CreatorsHandleRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/account': typeof AccountRoute
   '/artist-quick-battle': typeof ArtistQuickBattleRoute
   '/compete': typeof CompeteRoute
   '/crate': typeof CrateRoute
@@ -107,11 +132,14 @@ export interface FileRoutesById {
   '/lobby': typeof LobbyRoute
   '/profile': typeof ProfileRoute
   '/rankings': typeof RankingsRoute
+  '/api/account': typeof ApiAccountRoute
+  '/creators/$handle': typeof CreatorsHandleRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/account'
     | '/artist-quick-battle'
     | '/compete'
     | '/crate'
@@ -121,9 +149,12 @@ export interface FileRouteTypes {
     | '/lobby'
     | '/profile'
     | '/rankings'
+    | '/api/account'
+    | '/creators/$handle'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/account'
     | '/artist-quick-battle'
     | '/compete'
     | '/crate'
@@ -133,9 +164,12 @@ export interface FileRouteTypes {
     | '/lobby'
     | '/profile'
     | '/rankings'
+    | '/api/account'
+    | '/creators/$handle'
   id:
     | '__root__'
     | '/'
+    | '/account'
     | '/artist-quick-battle'
     | '/compete'
     | '/crate'
@@ -145,10 +179,13 @@ export interface FileRouteTypes {
     | '/lobby'
     | '/profile'
     | '/rankings'
+    | '/api/account'
+    | '/creators/$handle'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AccountRoute: typeof AccountRoute
   ArtistQuickBattleRoute: typeof ArtistQuickBattleRoute
   CompeteRoute: typeof CompeteRoute
   CrateRoute: typeof CrateRoute
@@ -158,6 +195,8 @@ export interface RootRouteChildren {
   LobbyRoute: typeof LobbyRoute
   ProfileRoute: typeof ProfileRoute
   RankingsRoute: typeof RankingsRoute
+  ApiAccountRoute: typeof ApiAccountRoute
+  CreatorsHandleRoute: typeof CreatorsHandleRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -167,6 +206,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/account': {
+      id: '/account'
+      path: '/account'
+      fullPath: '/account'
+      preLoaderRoute: typeof AccountRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/artist-quick-battle': {
@@ -232,11 +278,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RankingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/account': {
+      id: '/api/account'
+      path: '/api/account'
+      fullPath: '/api/account'
+      preLoaderRoute: typeof ApiAccountRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/creators/$handle': {
+      id: '/creators/$handle'
+      path: '/creators/$handle'
+      fullPath: '/creators/$handle'
+      preLoaderRoute: typeof CreatorsHandleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AccountRoute: AccountRoute,
   ArtistQuickBattleRoute: ArtistQuickBattleRoute,
   CompeteRoute: CompeteRoute,
   CrateRoute: CrateRoute,
@@ -246,6 +307,8 @@ const rootRouteChildren: RootRouteChildren = {
   LobbyRoute: LobbyRoute,
   ProfileRoute: ProfileRoute,
   RankingsRoute: RankingsRoute,
+  ApiAccountRoute: ApiAccountRoute,
+  CreatorsHandleRoute: CreatorsHandleRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
