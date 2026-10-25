@@ -21,7 +21,7 @@ grant update (display_name, bio, location, creator_role) on public.creator_profi
 create function public.arena_verified_account() returns boolean language sql stable security definer set search_path = '' as $$
   select exists(select 1 from auth.users where id = (select auth.uid()) and email_confirmed_at is not null and not coalesce(is_anonymous, false));
 $$;
-revoke all on function public.arena_verified_account() from public;
+revoke all on function public.arena_verified_account() from public, anon, authenticated;
 grant execute on function public.arena_verified_account() to authenticated;
 create policy profiles_public_read on public.creator_profiles for select to anon, authenticated using (true);
 create policy profiles_owner_insert on public.creator_profiles for insert to authenticated
@@ -40,7 +40,7 @@ begin
   return new;
 end;
 $$;
-revoke all on function public.creator_profile_revision() from public;
+revoke all on function public.creator_profile_revision() from public, anon, authenticated;
 create trigger creator_profile_revision before update on public.creator_profiles
   for each row execute function public.creator_profile_revision();
 -- Recording information is private. Never add it to the public profile SELECT.
@@ -68,7 +68,7 @@ begin
   return new;
 end;
 $$;
-revoke all on function public.creator_recording_revision() from public;
+revoke all on function public.creator_recording_revision() from public, anon, authenticated;
 create trigger creator_recording_revision before update on public.creator_recording_preferences
   for each row execute function public.creator_recording_revision();
 commit;

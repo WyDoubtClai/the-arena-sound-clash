@@ -152,6 +152,8 @@ do $$ begin
   if has_column_privilege('authenticated','public.creator_recording_preferences','account_id','UPDATE') or has_column_privilege('authenticated','public.creator_recording_preferences','revision','UPDATE') then raise exception 'FAIL: protected preference column grant'; end if;
   if not has_column_privilege('authenticated','public.creator_profiles','creator_role','UPDATE') or not has_column_privilege('authenticated','public.creator_recording_preferences','recording_setup','UPDATE') then raise exception 'FAIL: intended owner column grants missing'; end if;
   if has_function_privilege('anon','public.arena_verified_account()','EXECUTE') then raise exception 'FAIL: anonymous verification-helper execution grant'; end if;
+  if not has_function_privilege('authenticated','public.arena_verified_account()','EXECUTE') then raise exception 'FAIL: authenticated verification-helper grant missing'; end if;
+  if has_function_privilege('anon','public.creator_profile_revision()','EXECUTE') or has_function_privilege('authenticated','public.creator_profile_revision()','EXECUTE') or has_function_privilege('anon','public.creator_recording_revision()','EXECUTE') or has_function_privilege('authenticated','public.creator_recording_revision()','EXECUTE') then raise exception 'FAIL: direct trigger-function execution grant'; end if;
 end $$;
 \echo PASS: Explicit table, column and verification-helper grants
 
