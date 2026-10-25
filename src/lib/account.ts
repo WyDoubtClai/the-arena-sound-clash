@@ -1,4 +1,5 @@
-import { z } from "zod";
+// Avoid reusing a stale Zod 3 bare-import prebundle after the dependency upgrade.
+import { z } from "zod/v4";
 import { challengeRole, creatorRoleLabel } from "./creator-settings";
 
 export const creatorRoleSchema = z.enum(["Rapper", "Producer", "Both", "Fan"]);

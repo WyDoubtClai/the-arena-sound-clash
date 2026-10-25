@@ -3,6 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AccountPage, PublicCreator } from "@/components/arena/account-profile";
 import { accountRequest } from "@/lib/account";
 
+// Reproduce the stale bare-import bundle seen in Chrome after the Zod 3 -> 4 update.
+// Account schemas must still load through the explicit v4 entry point.
+vi.mock("zod", async () => import("zod/v3"));
 vi.mock("@tanstack/react-router", () => ({ Link: ({ children, to, ...props }: any) => <a href={to}>{children}</a> }));
 vi.mock("@/lib/account", async (original) => ({ ...await original<typeof import("@/lib/account")>(), accountRequest: vi.fn() }));
 const request = vi.mocked(accountRequest);
@@ -13,6 +16,29 @@ beforeEach(() => { request.mockReset(); window.history.replaceState({}, "", "/ac
 afterEach(cleanup);
 
 describe("real account UI isolation and auth flow (mocked service)", () => {
+  it.each([
+    ["Register", "Create account", "signup", "Create account", "Email request could not be completed. Try again later."],
+    ["Sign in", "Sign in", "signin", "Sign in", "Sign-in failed. Check your credentials and verify your email."],
+    ["Forgot password?", "Recover password", "recover", "Send email", "Email request could not be completed. Try again later."],
+    ["Resend verification", "Resend verification", "resend", "Send email", "Email request could not be completed. Try again later."],
+  ])("keeps %s usable and renders service failures inline", async (navigation, heading, action, submit, message) => {
+    request.mockResolvedValueOnce({ user: null, profile: null }).mockRejectedValueOnce(new Error(message));
+    render(<AccountPage />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Register" })).toBeEnabled());
+    if (action !== "signin") fireEvent.click(screen.getByRole("button", { name: navigation }));
+    expect(screen.getByRole("heading", { name: heading })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "browser-test@example.invalid" } });
+    if (action === "signup" || action === "signin") fireEvent.change(screen.getByLabelText(/^Password/), { target: { value: "fake browser test password" } });
+    fireEvent.click(screen.getByRole("button", { name: submit }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(message);
+    expect(request).toHaveBeenLastCalledWith({ action, email: "browser-test@example.invalid", ...(["signup", "signin"].includes(action) ? { password: "fake browser test password" } : {}) });
+    expect(screen.getByRole("heading", { name: heading })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: submit })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: action === "signin" ? "Register" : "Sign in" }));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Email")).toHaveValue("");
+    expect(screen.getByLabelText(/^Password/)).toHaveValue("");
+  });
   it("does not auto-create a real profile or import a demo identity", async () => {
     request.mockResolvedValue({ user: null, profile: null });
     render(<AccountPage />);
