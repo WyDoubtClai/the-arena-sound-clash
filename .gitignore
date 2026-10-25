@@ -30,3 +30,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Account secrets belong in ignored local configuration, never in Git.
+.env.*
+!.env.example

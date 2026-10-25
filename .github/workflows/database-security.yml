@@ -1,0 +1,63 @@
+name: Database security
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/database-security.yml'
+      - 'supabase/migrations/**'
+      - 'supabase/tests/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: database-security-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  profiles-rls:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Check out PR merge tree without persisted credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Install pinned Supabase CLI
+        uses: supabase/setup-cli@45a513f8c64c0bc8e0e3dfe572b5c95be85f6359 # v3
+        with:
+          version: 2.122.0
+      - name: Create isolated local configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/arena-db"
+          cd "$RUNNER_TEMP/arena-db"
+          supabase init
+          sed -i 's/^project_id = .*/project_id = "arena-ci"/' "$RUNNER_TEMP/arena-db/supabase/config.toml"
+          mkdir -p "$RUNNER_TEMP/arena-db/supabase/migrations"
+          cp "$GITHUB_WORKSPACE"/supabase/migrations/*.sql "$RUNNER_TEMP/arena-db/supabase/migrations/"
+          # Never copy .env, linked project metadata, cloud configuration or credentials.
+      - name: Start disposable database and apply migrations
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/arena-db"
+          supabase db start
+          # Resolve the sole local database, not a CLI-version-specific container name.
+          mapfile -t databases < <(docker ps --format '{{.ID}} {{.Image}}' | awk '$2 ~ /supabase\/postgres:/ {print $1}')
+          test "${#databases[@]}" -eq 1
+          printf 'ARENA_DB_CONTAINER=%s\n' "${databases[0]}" >> "$GITHUB_ENV"
+          docker exec "${databases[0]}" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -c 'SELECT version();'
+      - name: Execute SQL authorization assertions
+        shell: bash
+        run: |
+          set -euo pipefail
+          # psql runs INSIDE the disposable container, with no remote host or URL.
+          docker exec -i "$ARENA_DB_CONTAINER" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/tests/creator_profiles.sql
+          printf '%s\n' 'Migration and all SQL authorization assertions passed against disposable local Supabase.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Stop disposable database
+        if: always()
+        run: |
+          cd "$RUNNER_TEMP/arena-db"
+          supabase stop --no-backup
