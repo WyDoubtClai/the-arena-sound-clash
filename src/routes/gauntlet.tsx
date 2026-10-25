@@ -6,9 +6,10 @@ import { cn } from "@/lib/utils";
 import { byId, me } from "@/lib/data";
 import { fmt, usePlayer } from "@/lib/player";
 import { beatUrl } from "@/lib/synth";
-import { Avatar, Panel, Waveform } from "@/components/arena/bits";
+import { Avatar, Panel, PlayButton, Waveform } from "@/components/arena/bits";
 import { Switch } from "@/components/ui/switch";
 import { BattleParticipants, BattleCountdown, BattleRating } from "@/components/arena/battle-controls";
+import { clockAt, clockReducer, durations, readClock, saveClock } from "@/lib/gauntlet-clock";
 
 export const Route = createFileRoute("/gauntlet")({
   head: () => ({
@@ -26,31 +27,18 @@ export const Route = createFileRoute("/gauntlet")({
 
 const roster = [me.id, "tonemadelt", "dretracks", "kayobeats", "kairo", "flexmadelt", "soundmason", "novarae"];
 const stages = ["Ready Up", "Sample Kit", "Create", "Upload", "Listen & Judge", "Results"] as const;
-type Stage = 0 | 1 | 2 | 3 | 4 | 5;
-const durations = { 2: 15 * 60, 3: 3 * 60 };
-type ClockState = { stage: Stage; left: number };
-type ClockAction = { type: "advance"; from: Stage } | { type: "tick"; from: Stage; seconds: number } | { type: "reset" };
-const clockAt = (stage: Stage): ClockState => ({ stage, left: stage === 2 || stage === 3 ? durations[stage] : 0 });
-
-function clockReducer(state: ClockState, action: ClockAction): ClockState {
-  if (action.type === "reset") return clockAt(0);
-  // Ignore duplicate transitions or ticks queued by a previous stage.
-  if (action.from !== state.stage) return state;
-  if (action.type === "advance") return clockAt(Math.min(5, state.stage + 1) as Stage);
-  if (state.stage !== 2 && state.stage !== 3) return state;
-  const left = Math.max(0, state.left - action.seconds);
-  // Initialize the next stage's clock in the same update as its stage.
-  return left === 0 ? clockAt((state.stage + 1) as Stage) : { ...state, left };
-}
 const SEG = 45;
 const emojis = ["🔥", "💯", "😮", "😍", "👏", "🎧", "🤯", "😤", "🙌", "😂"];
-const kit = ["Dusty Rhodes Chord.wav", "Vinyl Crackle Loop.wav", "808 Boom (C).wav", "Choir Stab.wav", "Perc Shaker.wav"];
+const kit = { id: "sunday-service", title: "Sunday Service", samples: ["Dusty Rhodes Chord.wav", "Vinyl Crackle Loop.wav", "808 Boom (C).wav", "Choir Stab.wav", "Perc Shaker.wav"] };
 const chatLines = ["this kit is crazy 😤", "that bounce tho", "drums hitting different", "who flipped the choir 👀", "certified heat", "mix a lil muddy but vibe is there", "W", "rewind that 🔁"];
 
 function Gauntlet() {
   const pl = usePlayer();
-  const [{ stage, left }, dispatchClock] = useReducer(clockReducer, clockAt(0));
-  const [demo, setDemo] = useState(true);
+  const [clock, dispatchClock] = useReducer(clockReducer, undefined, () => clockAt(0));
+  const { stage, left, speed } = clock;
+  const demo = speed === 30;
+  const revealedKit = clock.revealedKitId === kit.id ? kit : null;
+  const [clockLoaded, setClockLoaded] = useState(false);
   const [ready, setReady] = useState<string[]>([]);
   const [downloaded, setDownloaded] = useState(false);
   const [uploaded, setUploaded] = useState<string | null>(null);
@@ -62,16 +50,27 @@ function Gauntlet() {
   const [chat, setChat] = useState<{ who: string; t: string }[]>([{ who: "judgeraye", t: "Welcome to Gauntlet #2041 🎛️" }]);
   const [msg, setMsg] = useState("");
   const audio = useRef<HTMLAudioElement | null>(null);
-  const speed = demo ? 30 : 1;
+
+  useEffect(() => {
+    const saved = readClock();
+    if (saved?.progress) {
+      setUploaded(saved.progress.uploaded); setIdx(saved.progress.index);
+      setMyRatings(saved.progress.ratings); setDownloaded(saved.progress.downloaded);
+    }
+    dispatchClock({ type: "restore", clock: saved ?? clockAt(0) });
+    setClockLoaded(true);
+  }, []);
+  useEffect(() => {
+    if (clockLoaded) saveClock({ ...clock, progress: { uploaded, index: idx, ratings: myRatings, downloaded } });
+  }, [clock, clockLoaded, uploaded, idx, myRatings, downloaded]);
 
   const botRatings = useMemo(() => roster.map((_, i) => Array.from({ length: 7 }, (_, k) => 2.5 + ((i * 7 + k * 3) % 5) * 0.55)), []);
 
-  // Only creation and upload are timed; the kit waits for Start Creation or Skip.
   useEffect(() => {
-    if (stage !== 2 && stage !== 3) return;
-    const id = setInterval(() => dispatchClock({ type: "tick", from: stage, seconds: speed }), 1000);
+    if (!clockLoaded || (stage !== 2 && stage !== 3)) return;
+    const id = setInterval(() => dispatchClock({ type: "tick", from: stage, now: Date.now() }), 1000);
     return () => clearInterval(id);
-  }, [stage, speed]);
+  }, [stage, speed, clockLoaded]);
 
   // waiting room: bots ready up
   useEffect(() => {
@@ -81,7 +80,7 @@ function Gauntlet() {
   }, [stage, demo]);
   useEffect(() => {
     if (stage !== 0 || ready.length !== 8) return undefined;
-    const t = setTimeout(() => dispatchClock({ type: "advance", from: 0 }), 800);
+    const t = setTimeout(() => revealSampleKit(kit), 800);
     return () => clearTimeout(t);
   }, [ready, stage]);
 
@@ -127,22 +126,33 @@ function Gauntlet() {
     setTimeout(() => setBursts((b) => b.filter((x) => x.id !== id)), 2200);
   }
   function next() {
-    if (idx >= 7) dispatchClock({ type: "advance", from: 4 });
+    if (idx >= 7) dispatchClock({ type: "advance", from: 4, now: Date.now() });
     else setIdx(idx + 1);
   }
   function reset() {
     audio.current?.pause();
-    dispatchClock({ type: "reset" });
+    dispatchClock({ type: "reset", now: Date.now() });
     setReady([]); setDownloaded(false); setUploaded(null); setIdx(0); setMyRatings({});
     setPos(0); setDrag(false); setBursts([]); setMsg("");
     setChat([{ who: "judgeraye", t: "Welcome to Gauntlet #2041 🎛️" }]);
+  }
+  // Call only when the chosen kit is actually revealed, including after any future selection phase.
+  function revealSampleKit(selectedKit: typeof kit) {
+    dispatchClock({ type: "kit-revealed", kitId: selectedKit.id, now: Date.now() });
   }
   function skip() {
     if (stage === 4) next();
     else if (stage < 4) {
       if (stage === 0) setReady(roster.slice());
-      dispatchClock({ type: "advance", from: stage });
+      if (stage === 0 || stage === 1) revealSampleKit(kit);
+      else dispatchClock({ type: "advance", from: stage, now: Date.now() });
     }
+  }
+  function downloadSample(index: number) {
+    const link = document.createElement("a");
+    link.href = beatUrl(200 + index, 8);
+    link.download = kit.samples[index];
+    link.click();
   }
 
   const results = roster.map((id, i) => {
@@ -159,7 +169,7 @@ function Gauntlet() {
           <h1 className="text-3xl font-bold italic md:text-4xl">THE GAUNTLET</h1>
         </div>
         <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 rounded-full border bg-surface px-3 py-1.5 text-sm"><Switch checked={demo} onCheckedChange={setDemo} aria-label="Demo mode" />Demo Mode {demo && <span className="text-xs text-gold">30×</span>}</label>
+          <label className="flex items-center gap-2 rounded-full border bg-surface px-3 py-1.5 text-sm"><Switch checked={demo} onCheckedChange={(enabled) => dispatchClock({ type: "speed", speed: enabled ? 30 : 1, now: Date.now() })} aria-label="Demo mode" />Demo Mode {demo && <span className="text-xs text-gold">30×</span>}</label>
           {stage < 5 && <button onClick={skip} className="flex items-center gap-1 rounded-full bg-violet px-3 py-1.5 text-sm font-semibold text-primary-foreground"><FastForward className="h-4 w-4" />Skip</button>}
           <button onClick={reset} aria-label="Restart" className="grid h-8 w-8 place-items-center rounded-full border"><RotateCcw className="h-4 w-4" /></button>
         </div>
@@ -176,7 +186,7 @@ function Gauntlet() {
 
       {(stage === 2 || stage === 3) && (
         <Panel className="flex flex-wrap items-center justify-between gap-4 border-violet/40">
-          <BattleCountdown label={stage === 2 ? "Creation countdown" : "Upload window closes in"} left={left} urgent />
+          <BattleCountdown label={stage !== 3 ? "Creation countdown" : "Upload window closes in"} left={left} urgent />
           <div className="h-2 min-w-48 flex-1 overflow-hidden rounded-full bg-muted"><div className="h-full bg-gradient-to-r from-violet to-coral transition-all" style={{ width: `${100 - (left / durations[stage]) * 100}%` }} /></div>
         </Panel>
       )}
@@ -190,14 +200,14 @@ function Gauntlet() {
         </Panel>
       )}
 
-      {stage === 1 && (
+      {revealedKit && stage === 2 && (
         <Panel className="space-y-4">
-          <h2 className="text-xl font-bold">Sample Kit Revealed: “Sunday Service”</h2>
-          <div className="grid gap-2 sm:grid-cols-2">{kit.map((k, i) => (
-            <div key={k} className="flex items-center gap-3 rounded-xl border bg-background p-3"><Waveform seed={200 + i} bars={24} className="h-6 max-w-24" /><span className="truncate text-sm">{k}</span></div>
+          <h2 className="text-xl font-bold">Sample Kit Revealed: “{revealedKit.title}”</h2>
+          <p className="text-sm text-muted-foreground">Creation starts automatically when the kit is revealed. Preview or download while the clock runs. These five 8-second samples are synthesized demo audio.</p>
+          <div className="grid gap-2 sm:grid-cols-2">{revealedKit.samples.map((k, i) => (
+            <div key={k} className="flex min-w-0 items-center gap-3 rounded-xl border bg-background p-3"><PlayButton track={{ id: `gauntlet-kit-${i}`, title: k, artist: "Sunday Service · demo kit", seed: 200 + i, seconds: 8 }} size="sm" /><span className="min-w-0 flex-1 break-words text-sm">{k}</span><button aria-label={`Download ${k}`} onClick={() => downloadSample(i)} className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border"><Download className="h-4 w-4" /></button></div>
           ))}</div>
-          <button onClick={() => { setDownloaded(true); toast.success("Kit downloaded (5 files, 12 MB)"); }} className="flex items-center gap-2 rounded-xl bg-teal px-5 py-2.5 font-semibold text-primary-foreground"><Download className="h-4 w-4" />{downloaded ? "Downloaded ✓" : "Download Kit"}</button>
-          <button onClick={() => dispatchClock({ type: "advance", from: 1 })} className="rounded-lg bg-violet px-5 py-2.5 text-sm font-semibold text-primary-foreground">Start Creation</button>
+          <button onClick={() => { revealedKit.samples.forEach((_, i) => downloadSample(i)); setDownloaded(true); toast.success("Demo kit downloads requested. If your browser blocks multiple downloads, use each sample's download button."); }} className="flex items-center gap-2 rounded-xl bg-teal px-5 py-2.5 font-semibold text-primary-foreground"><Download className="h-4 w-4" />{downloaded ? "Download Kit Again" : "Download Kit"}</button>
         </Panel>
       )}
 
@@ -227,7 +237,7 @@ function Gauntlet() {
           </label>
           <div className="mt-4 flex flex-wrap gap-3">
             <button onClick={() => setUploaded("sunday_service_flip_FINAL.wav")} className="rounded-lg border px-4 py-2 text-sm">Simulate upload</button>
-            <button disabled={!uploaded} onClick={() => dispatchClock({ type: "advance", from: 3 })} className="rounded-lg bg-violet px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-40">Lock In & Continue</button>
+            <button disabled={!uploaded} onClick={() => dispatchClock({ type: "advance", from: 3, now: Date.now() })} className="rounded-lg bg-violet px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-40">Lock In & Continue</button>
           </div>
         </Panel>
       )}
