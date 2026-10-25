@@ -38,6 +38,38 @@ let h: ReturnType<typeof harness>;
 beforeEach(() => { h = harness(); });
 
 describe("account validation and role mapping", () => {
+  it("preserves email normalization and accepted formats after the Zod upgrade", () => {
+    for (const action of ["signup", "signin", "recover", "resend"]) {
+      const password = "a long test password";
+      for (const email of ["creator@example.test", "O'Connor+mix@sub.example.com", "first.last@example.co.uk", "a_b@example.com"]) {
+        const input = { action, email: ` ${email} `, ...(["signup", "signin"].includes(action) ? { password } : {}) };
+        expect(accountActionSchema.parse(input)).toEqual({ ...input, email });
+      }
+      for (const email of ["a..b@example.com", ".a@example.com", "a@localhost", "a@b.c", "a@-host.example", `${"a".repeat(242)}@example.test`]) {
+        expect(accountActionSchema.safeParse({ action, email, ...(["signup", "signin"].includes(action) ? { password } : {}) }).success).toBe(false);
+      }
+    }
+  });
+  it("preserves password length boundaries without rejecting legacy sign-ins", () => {
+    for (const action of ["signup", "password"]) {
+      const fields = action === "signup" ? { email: user.email } : { accountId: A };
+      for (const length of [12, 128]) expect(accountActionSchema.safeParse({ action, ...fields, password: "x".repeat(length) }).success).toBe(true);
+      for (const length of [0, 11, 129]) expect(accountActionSchema.safeParse({ action, ...fields, password: "x".repeat(length) }).success).toBe(false);
+    }
+    for (const length of [1, 11, 128]) expect(accountActionSchema.safeParse({ action: "signin", email: user.email, password: "x".repeat(length) }).success).toBe(true);
+    for (const length of [0, 129]) expect(accountActionSchema.safeParse({ action: "signin", email: user.email, password: "x".repeat(length) }).success).toBe(false);
+  });
+  it("preserves UUID-shaped IDs while refusing to treat them as verified ownership", async () => {
+    const base = { action: "role", profile: { creator_role: "Both", revision: 0 } };
+    for (const accountId of [A, B.toUpperCase(), "11111111-1111-1111-1111-111111111111"]) {
+      expect(accountActionSchema.safeParse({ ...base, accountId }).success).toBe(true);
+    }
+    for (const accountId of ["", "not-an-id", A.replaceAll("-", ""), `${A}x`, null]) {
+      expect(accountActionSchema.safeParse({ ...base, accountId }).success).toBe(false);
+    }
+    expect((await h.call({ ...base, accountId: "11111111-1111-1111-1111-111111111111" })).status).toBe(409);
+    expect(h.client.from).not.toHaveBeenCalled();
+  });
   it.each(["Rapper", "Producer", "Both", "Fan"] as const)("accepts exactly one %s role", (role) => {
     expect(profileCreateSchema.parse({ ...profile, creator_role: role }).creator_role).toBe(role);
     expect(accountChallengeRole(role)).toBe(role === "Fan" ? null : role === "Rapper" ? "Artist" : role);
