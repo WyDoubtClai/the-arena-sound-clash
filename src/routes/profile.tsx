@@ -3,12 +3,13 @@ import { BadgeCheck, Crown, Disc3, Flame, Heart, LockKeyhole, MapPin, MessageSqu
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { beats, byId, tracks } from "@/lib/data";
-import { usePlayer } from "@/lib/player";
+import { beats, byId } from "@/lib/data";
+import { fmt, usePlayer } from "@/lib/player";
 import { achievementList, canEditProfile, canFeatureAchievement, competitive, crateMetrics, earnedAchievements, isCompetitionEligible, matchHistory, profileIds, profileListing, profileRoles, winPercentage, type ProfileId } from "@/lib/profile-demo";
 import { Avatar, Panel, Pills, PlayButton, RoleBadge, Waveform } from "@/components/arena/bits";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { songTrack, songsFor } from "@/lib/song-catalog";
 import { BeatVault } from "@/components/arena/beat-vault";
 import banner from "@/assets/studio-banner.jpg";
 
@@ -121,14 +122,14 @@ function Profile() {
         <Pills items={tabs} value={tab} onChange={setTab} />
         {tab === "Music" && <div className="space-y-6">
           {id === "blaze" && <section aria-label="Songs">
-            <h2 className="mb-3 font-display text-lg font-semibold">Songs <span className="ml-2 text-xs font-normal text-muted-foreground">Demo discography</span></h2>
+            <h2 className="mb-3 font-display text-lg font-semibold">Songs <span className="ml-2 text-xs font-normal text-muted-foreground">Demo discography · 30s synthesized audio</span></h2>
             <Panel className="space-y-4 rounded-lg">
-              {tracks.slice(4).map((t) => <div key={t.id} className="flex items-center gap-3">
+              {songsFor(id).map((t) => <div key={t.id} className="flex items-center gap-3">
                 <img src={banner} alt="" className="hidden h-12 w-12 rounded-md object-cover sm:block" />
-                <PlayButton track={{ ...t, artist: displayName }} />
+                <PlayButton track={{ ...songTrack(t, "profile"), artist: displayName }} />
                 <div className="min-w-0 flex-1 sm:max-w-40"><p className="truncate text-sm font-semibold">{t.title}</p><p className="truncate text-xs text-muted-foreground">{displayName} · {t.plays} plays</p></div>
-                <Waveform seed={t.seed} bars={50} progress={pl.track?.id === t.id ? pl.time / pl.duration : 0} className="hidden h-8 sm:flex" onSeek={(progress) => { if (pl.track?.id === t.id) pl.seek(progress * pl.duration); }} />
-                <div className="shrink-0 text-right text-xs text-muted-foreground"><p>{t.dur}</p><p className="mt-1 flex items-center justify-end gap-1 text-coral"><Heart className="h-3 w-3" />{t.likes}</p></div>
+                <Waveform seed={t.audio?.kind === "demo" ? t.audio.seed : 0} bars={50} progress={pl.track?.id === songTrack(t, "profile").id ? pl.time / pl.duration : 0} className="hidden h-8 sm:flex" onSeek={(progress) => { if (pl.track?.id === songTrack(t, "profile").id) pl.seek(progress * pl.duration); }} />
+                <div className="shrink-0 text-right text-xs text-muted-foreground"><p>{fmt(t.seconds)}</p><p className="mt-1 flex items-center justify-end gap-1 text-coral"><Heart className="h-3 w-3" />{t.likes}</p></div>
               </div>)}
             </Panel>
           </section>}

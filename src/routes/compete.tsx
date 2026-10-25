@@ -21,7 +21,7 @@ const modes = [
   { icon: Zap, color: "violet", title: "Producer Quick Battle", rules: ["8 producers", "15 min create + 3 min upload", "45-second beat entry", "Shared sample kit"], cta: "Enter the Gauntlet", to: "/gauntlet" as const },
   { icon: Disc3, color: "coral", title: "Artist Quick Battle", rules: ["Beat drawn from The Crate", "15 min to write & record", "60-second entry", "Live crowd judging"], cta: "Enter Artist Quick Battle", to: "/artist-quick-battle" as const },
   { icon: Users, color: "teal", title: "Custom Battle Rooms", rules: ["Up to 20 people", "Pick performers & judges", "Your own rules & timers", "Private or public"], cta: "Create Room" },
-  { icon: ListMusic, color: "gold", title: "Song-for-Song", rules: ["8 artists, finished songs", "Shared 3-minute upload", "No beat draw or creation timer", "Full tracks allowed"], cta: "Enter Song-for-Song", to: "/artist-quick-battle" as const, search: { format: "song" as const } },
+  { icon: ListMusic, color: "gold", title: "Song-for-Song", rules: ["8 artists, finished songs", "Shared 3-minute song selection", "No beat draw or creation timer", "Choose a playable profile song"], cta: "Enter Song-for-Song", to: "/artist-quick-battle" as const, search: { format: "song" as const } },
 ];
 
 const live = [
