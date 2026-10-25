@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { songTrack, songsFor } from "@/lib/song-catalog";
 import { BeatVault } from "@/components/arena/beat-vault";
+import { useCreatorSettings } from "@/lib/creator-settings";
+import { CreatorRoleDisplay, CreatorRoleSettings } from "@/components/arena/creator-role-settings";
 import banner from "@/assets/studio-banner.jpg";
 
 export const Route = createFileRoute("/profile")({
@@ -61,6 +63,7 @@ function Profile() {
   const [name, setName] = useState("Blaze");
   const [city, setCity] = useState("Atlanta, GA");
   const [edit, setEdit] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [draftName, setDraftName] = useState(name);
   const [draftBio, setDraftBio] = useState(bios.blaze);
   const [draftCity, setDraftCity] = useState(city);
@@ -68,6 +71,7 @@ function Profile() {
   const pl = usePlayer();
   const isJudge = id === "judgeraye";
   const own = canEditProfile(id);
+  const creatorSettings = useCreatorSettings(id);
   const comp = isJudge ? null : competitive[id];
   const crate = isJudge ? null : crateMetrics[id];
   const title = achievementList.find((a) => a.id === featured[id]);
@@ -91,10 +95,17 @@ function Profile() {
   return <div className="space-y-6">
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div className="flex flex-wrap gap-2" role="tablist" aria-label="Demo profile">
-        {profileIds.map((profile) => <Button key={profile} variant="outline" size="sm" role="tab" aria-selected={id === profile} onClick={() => { setId(profile); setEdit(false); }} className={cn("rounded-full", id === profile && "border-violet text-violet")}>View {byId(profile).name}</Button>)}
+        {profileIds.map((profile) => <Button key={profile} variant="outline" size="sm" role="tab" aria-selected={id === profile} onClick={() => { setId(profile); setEdit(false); setSettingsOpen(false); }} className={cn("rounded-full", id === profile && "border-violet text-violet")}>View {byId(profile).name}</Button>)}
       </div>
       <p className="text-xs text-muted-foreground">Demo profiles · All records and accomplishments are fictional</p>
     </div>
+
+    {own && creatorSettings.loaded && !creatorSettings.settings && <Panel className="space-y-2 rounded-lg">
+      <h2 className="font-display font-semibold">Set up your creator role</h2>
+      <p className="text-sm text-muted-foreground">Choose Rapper, Producer, or Both to finish this demo profile’s role setup. No role is inferred from sample music or battle records.</p>
+      <Button onClick={() => setSettingsOpen(true)}>Set up creator profile</Button>
+    </Panel>}
+    {own && creatorSettings.storageError && <p role="alert" className="text-sm text-coral">Browser storage is unavailable. Your saved creator role could not be loaded.</p>}
 
     <section className="overflow-hidden rounded-3xl border bg-surface" aria-label="Profile identity">
       <img src={banner} alt="" width={1600} height={608} className="h-36 w-full object-cover md:h-52" />
@@ -102,7 +113,7 @@ function Profile() {
         <div className="relative -mt-12"><Avatar id={p.id} size={112} ring /></div>
         <div className="min-w-0 flex-1 basis-64 pt-3">
           <h1 className="flex items-center gap-2 break-words text-3xl font-bold">{displayName}<BadgeCheck aria-label="Demo verification badge" className="h-6 w-6 shrink-0 text-violet" /></h1>
-          <div className="mt-1 flex flex-wrap items-center gap-2">{profileRoles[id].map((role) => <RoleBadge key={role} role={role} />)}<span className="rounded-md border border-gold/40 px-1.5 py-0.5 text-[10px] font-semibold text-gold">LEVEL {p.level}</span></div>
+          <div className="mt-1 flex flex-wrap items-center gap-2">{own || creatorSettings.settings ? <CreatorRoleDisplay role={creatorSettings.settings?.creatorRole ?? null} loaded={creatorSettings.loaded} /> : profileRoles[id].map((role) => <RoleBadge key={role} role={role} />)}<span className="rounded-md border border-gold/40 px-1.5 py-0.5 text-[10px] font-semibold text-gold">LEVEL {p.level}</span></div>
           <p className="mt-3 flex items-center gap-2 font-display text-sm font-semibold text-gold"><TitleIcon className="h-4 w-4 shrink-0" />{title?.title}<span className="font-sans text-[10px] font-normal text-muted-foreground">Demo title</span></p>
           <p className="mt-2 break-words text-sm text-muted-foreground">{bios[id]}</p>
           {(own || p.city) && <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground"><MapPin className="h-3 w-3" />{own ? city : p.city}</p>}
@@ -112,6 +123,7 @@ function Profile() {
         </div>
         <div className="flex items-center gap-2">
           {own ? <Button variant="outline" size="sm" onClick={() => { setDraftName(name); setDraftBio(bios.blaze); setDraftCity(city); setEdit(true); }}>Edit Profile</Button> : <span className="text-xs text-muted-foreground">Visitor preview</span>}
+          {own && <Button variant="outline" size="sm" disabled={!creatorSettings.loaded} onClick={() => setSettingsOpen(true)}>Settings</Button>}
           <Button variant="outline" size="icon" onClick={share} aria-label="Share profile" title="Copy profile preview link"><Share2 /></Button>
         </div>
       </div>
@@ -201,6 +213,7 @@ function Profile() {
       </aside>
     </div>
 
+    {settingsOpen && own && <CreatorRoleSettings profileId={id} currentRole={creatorSettings.settings?.creatorRole ?? null} onClose={() => setSettingsOpen(false)} />}
     <Dialog open={edit && own} onOpenChange={setEdit}><DialogContent className="bg-surface"><DialogHeader><DialogTitle>Edit Profile</DialogTitle><DialogDescription>Demo edits apply only to this session. Nothing is saved or published.</DialogDescription></DialogHeader>
       <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); if (!own || !draftName.trim()) return; setName(draftName.trim()); setCity(draftCity.trim()); setBios((prev) => ({ ...prev, blaze: draftBio.trim() })); setEdit(false); toast.success("Demo profile updated for this session"); }}>
         <label className="block space-y-1 text-sm"><span>Display name</span><input required maxLength={40} value={draftName} onChange={(e) => setDraftName(e.target.value)} className="w-full rounded-md border bg-background px-3 py-2" /></label>
